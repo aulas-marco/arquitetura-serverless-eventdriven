@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  U1-LAB01 · Parte 5 — SnapStart. A mesma função Java 21 publicada em duas
+  variantes: sem SnapStart (paga Init Duration na partida fria) e com SnapStart
+  (restaura um snapshot da JVM — Restore Duration). Compare os dois no REPORT.
+
+Globals:
+  Function:
+    Runtime: java21
+    MemorySize: 512
+    Timeout: 30
+    Architectures:
+      - arm64
+    Handler: br.puc.iec.Handler::handleRequest
+    CodeUri: java/
+
+Resources:
+
+  # Variante SEM SnapStart — referência. Partida fria paga o custo cheio da JVM.
+  JavaSemSnapStart:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: u1lab01-snapstart-off
+
+  # Variante COM SnapStart. Exige versões publicadas: AutoPublishAlias cria o
+  # alias `live`. INVOQUE O ALIAS (u1lab01-snapstart-on:live) para usar o
+  # snapshot — o $LATEST não passa por SnapStart.
+  JavaComSnapStart:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: u1lab01-snapstart-on
+      AutoPublishAlias: live
+      SnapStart:
+        ApplyOn: PublishedVersions
+
+Outputs:
+  ComoInvocar:
+    Description: Alias a invocar para exercitar o SnapStart
+    Value: "aws lambda invoke --function-name u1lab01-snapstart-on:live --log-type Tail --query LogResult --output text /dev/null | base64 --decode"

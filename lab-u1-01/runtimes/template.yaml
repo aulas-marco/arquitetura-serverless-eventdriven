@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  U1-LAB01 · Parte 4 — Comparativo de runtimes. Três funções equivalentes
+  (Python 3.12, Java 21, Go provided.al2023) para medir o Init Duration da
+  partida fria de cada uma, em igualdade de condições.
+
+# Mesma memória e arquitetura para as três: comparação justa. Só o runtime muda.
+Globals:
+  Function:
+    MemorySize: 512
+    Timeout: 30
+    Architectures:
+      - arm64
+
+Resources:
+
+  PythonFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: u1lab01-runtime-python
+      Runtime: python3.12
+      Handler: app.lambda_handler
+      CodeUri: python/
+
+  JavaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: u1lab01-runtime-java
+      Runtime: java21
+      Handler: br.puc.iec.Handler::handleRequest
+      CodeUri: java/
+
+  GoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: u1lab01-runtime-go
+      Runtime: provided.al2023
+      Handler: bootstrap
+      CodeUri: go/
+    Metadata:
+      # Runtime custom: o SAM delega o build ao Makefile (alvo build-GoFunction).
+      BuildMethod: makefile
+
+Outputs:
+  Funcoes:
+    Description: Nomes das três funções para o script de medição
+    Value: u1lab01-runtime-python u1lab01-runtime-java u1lab01-runtime-go

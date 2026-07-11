@@ -1,0 +1,109 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  U1-LAB01 · Partes 1-3 — Alô mundo, gatilhos diversos e ciclo de vida.
+  Três funções Python: uma mínima, uma ligada a 4 fontes de evento e uma que
+  demonstra a fase Init e o reúso de container.
+
+Globals:
+  Function:
+    Runtime: python3.12
+    MemorySize: 256
+    Timeout: 30
+    Architectures:
+      - arm64
+
+Resources:
+
+  # =========================================================================
+  # PARTE 1 — Alô mundo. Função mínima; o foco é a linha REPORT no CloudWatch.
+  # =========================================================================
+  AloFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: u1lab01-alo
+      Handler: alo.lambda_handler
+      CodeUri: src/
+
+  # =========================================================================
+  # PARTE 2 — Gatilhos diversos. UM handler, QUATRO fontes de evento.
+  # Cada fonte entrega o `event` com uma forma diferente.
+  # =========================================================================
+  GatilhosFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: u1lab01-gatilhos
+      Handler: gatilhos.lambda_handler
+      CodeUri: src/
+      Events:
+
+        # (a) HTTP — API Gateway HTTP API (payload v2)
+        GatilhoHttp:
+          Type: HttpApi
+          Properties:
+            Path: /disparar
+            Method: post
+
+        # (b) Fila — SQS. SAM cria o EventSourceMapping e as permissões.
+        GatilhoSqs:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt FilaGatilho.Arn
+            BatchSize: 5
+
+        # (c) Objeto — S3. Dispara na criação de qualquer objeto no bucket.
+        GatilhoS3:
+          Type: S3
+          Properties:
+            Bucket: !Ref BucketGatilho
+            Events: s3:ObjectCreated:*
+
+        # (d) Agendado — EventBridge. Dispara a cada 5 minutos.
+        GatilhoAgendado:
+          Type: Schedule
+          Properties:
+            Schedule: rate(5 minutes)
+            Description: Dispara a GatilhosFunction periodicamente (demo)
+
+  # Recursos de apoio para os gatilhos SQS e S3 -----------------------------
+  FilaGatilho:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: u1lab01-fila-gatilho
+
+  BucketGatilho:
+    Type: AWS::S3::Bucket
+    # Nome omitido de propósito: o CloudFormation gera um nome único global.
+    # Evita colisão de nome de bucket entre alunos que fizerem o mesmo deploy.
+
+  # =========================================================================
+  # PARTE 3 — Ciclo de vida. Invocações sequenciais reusam o mesmo ambiente
+  # quente, então o reúso de container é fácil de observar mesmo sem reservar
+  # concorrência. Para FORÇAR um cold start, atualize a env var NONCE (ver
+  # README) — isso recicla o ambiente.
+  #
+  # Nota: ReservedConcurrentExecutions foi deixado de fora de propósito. Contas
+  # AWS novas têm o limite de concorrência do Lambda em 10 e exigem que a
+  # concorrência NÃO reservada fique >= 10 — reservar 1 aqui seria rejeitado.
+  # =========================================================================
+  CicloVidaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: u1lab01-ciclo-vida
+      Handler: ciclo_vida.lambda_handler
+      CodeUri: src/
+      Environment:
+        Variables:
+          # Mude o valor e faça novo deploy para forçar um cold start.
+          NONCE: v1
+
+Outputs:
+  UrlHttpApi:
+    Description: Endpoint para disparar a GatilhosFunction via HTTP
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/disparar"
+  FilaGatilhoUrl:
+    Description: URL da fila SQS que dispara a GatilhosFunction
+    Value: !Ref FilaGatilho
+  BucketGatilhoNome:
+    Description: Bucket S3 cujo upload dispara a GatilhosFunction
+    Value: !Ref BucketGatilho

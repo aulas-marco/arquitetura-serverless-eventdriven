@@ -1,0 +1,38 @@
+# SAM
+.aws-sam/
+samconfig.toml
+packaged.yaml
+
+# Build artefacts
+target/
+dist/
+build/
+bootstrap
+*.zip
+*.jar
+*.class
+
+# Go
+*.exe
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Medições geradas
+**/runtimes/resultado-*.md
+
+# pytest
+.pytest_cache/
+.python-version
+
+# Sistema
+.DS_Store
+*.log
+
+# Credenciais (nunca versionar)
+.env
+*.pem
+credentials
