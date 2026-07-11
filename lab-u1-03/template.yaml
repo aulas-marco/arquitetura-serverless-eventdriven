@@ -1,0 +1,104 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  U1-LAB03 · Idempotência com Lambda + DynamoDB. Um produtor envia PedidoCriado
+  para uma fila SQS (entrega at-least-once); um consumidor processa cada pedido
+  UMA vez usando conditional write no DynamoDB. Enviar o mesmo pedido duas vezes
+  grava um item só — a duplicata é ignorada.
+
+Globals:
+  Function:
+    Runtime: python3.12
+    MemorySize: 256
+    Timeout: 30
+    Architectures:
+      - arm64
+
+Resources:
+
+  # =========================================================================
+  # A TABELA — armazém de idempotência E dado de negócio ao mesmo tempo.
+  # A chave (pedidoId) é a partição; o conditional write "grava se não existir"
+  # usa essa chave para deduplicar. On-demand (PAY_PER_REQUEST): nada de
+  # capacidade para provisionar ou limpar. TTL expira o registro sozinho.
+  # =========================================================================
+  TabelaPedidos:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: u1lab03-pedidos
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pedidoId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pedidoId
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+  # =========================================================================
+  # A FILA — entrega at-least-once. É a razão de existir a idempotência: a
+  # mesma mensagem pode ser entregue mais de uma vez.
+  # =========================================================================
+  FilaPedidos:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: u1lab03-fila-pedidos
+
+  # =========================================================================
+  # PRODUTOR — envia o pedido para a fila. Aceita o pedidoId no corpo para o
+  # script poder reenviar o MESMO pedido (simulando a duplicata da SQS).
+  # =========================================================================
+  PublicarFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: u1lab03-publicar
+      Handler: publicar.lambda_handler
+      CodeUri: src/
+      Environment:
+        Variables:
+          FILA_URL: !Ref FilaPedidos
+      Policies:
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt FilaPedidos.QueueName
+      Events:
+        Http:
+          Type: HttpApi
+          Properties:
+            Path: /pedido
+            Method: post
+
+  # =========================================================================
+  # CONSUMIDOR — idempotente. Grava com attribute_not_exists(pedidoId):
+  # primeira vez passa (processa), duplicata falha a condição (ignora).
+  # =========================================================================
+  ConsumidorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: u1lab03-consumidor
+      Handler: consumidor.lambda_handler
+      CodeUri: src/
+      Environment:
+        Variables:
+          TABELA: !Ref TabelaPedidos
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TabelaPedidos
+      Events:
+        Fila:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt FilaPedidos.Arn
+            BatchSize: 5
+
+Outputs:
+  UrlHttpApi:
+    Description: Endpoint para enviar um pedido (POST com JSON no corpo)
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/pedido"
+  TabelaNome:
+    Description: Nome da tabela DynamoDB de pedidos processados
+    Value: !Ref TabelaPedidos
+  FilaUrl:
+    Description: URL da fila SQS de pedidos
+    Value: !Ref FilaPedidos

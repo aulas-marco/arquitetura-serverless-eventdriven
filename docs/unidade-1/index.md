@@ -14,8 +14,14 @@ Leia na ordem. Cada peça se apoia na anterior.
 | 2 | [Ciclo de vida e cold start](01-fundamentos/2-ciclo-de-vida-e-cold-start.md) | Init/Invoke/Shutdown; partida fria; custo GB·s |
 | 3 | [Eventos e gatilhos](01-fundamentos/3-eventos-e-gatilhos.md) | Evento vs comando; as 4 fontes de gatilho |
 | 4 | [Runtimes e SnapStart](01-fundamentos/4-runtimes-e-snapstart.md) | Por que a JVM penaliza; como o SnapStart mitiga |
-| — | [**Demo: U1-LAB01**](02-demos/u1-01.md) | O laboratório prático, em 5 partes |
-| — | [Arquitetura da unidade](03-arquitetura/arquitetura.md) | Diagramas de ciclo de vida e topologia de gatilhos |
+| 5 | [Mensageria e fan-out](01-fundamentos/5-mensageria-e-fanout.md) | SNS vs SQS; por que se combinam; o duplo envelope |
+| 6 | [Idempotência e entrega at-least-once](01-fundamentos/6-idempotencia-e-entrega.md) | Por que a duplicata acontece; conditional write; TTL |
+| 7 | [DLQ e resiliência](01-fundamentos/7-dlq-e-resiliencia.md) | Mensagem veneno; maxReceiveCount; falha parcial de lote |
+| — | [**Demo: U1-LAB01**](02-demos/u1-01.md) | Fundamentos do Lambda, em 5 partes |
+| — | [**Demo: U1-LAB02**](02-demos/u1-02.md) | Fan-out com SNS + SQS |
+| — | [**Demo: U1-LAB03**](02-demos/u1-03.md) | Idempotência com Lambda + DynamoDB |
+| — | [**Demo: U1-LAB04**](02-demos/u1-04.md) | DLQ e resiliência com Lambda |
+| — | [Arquitetura da unidade](03-arquitetura/arquitetura.md) | Diagramas de ciclo de vida, gatilhos, fan-out, idempotência e DLQ |
 | — | [Exercícios](exercicios.md) | Desafios para fixar |
 | — | [Glossário](glossario.md) | Termos e siglas (fonte única) |
 
@@ -24,9 +30,9 @@ Leia na ordem. Cada peça se apoia na anterior.
 | Lab | Título | Estado |
 |-----|--------|--------|
 | **U1-LAB01** | [Lambda: alô mundo, gatilhos, ciclo de vida e comparativo de runtimes](02-demos/u1-01.md) | ✅ Disponível |
-| U1V7 | Lambda + SNS + SQS fan-out | 🔜 |
-| U1V8 | Idempotência com Lambda e DynamoDB | 🔜 |
-| U1V9 | DLQ e resiliência com Lambda | 🔜 |
+| **U1-LAB02** | [Fan-out com SNS + SQS](02-demos/u1-02.md) | ✅ Disponível |
+| **U1-LAB03** | [Idempotência com Lambda + DynamoDB](02-demos/u1-03.md) | ✅ Disponível |
+| **U1-LAB04** | [DLQ e resiliência com Lambda](02-demos/u1-04.md) | ✅ Disponível |
 
 ## Objetivos de aprendizagem (Bloom)
 

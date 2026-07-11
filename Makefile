@@ -8,6 +8,9 @@
 #   make help         → lista todos os alvos
 
 LAB        := lab-u1-01
+LAB02      := lab-u1-02
+LAB03      := lab-u1-03
+LAB04      := lab-u1-04
 AWS_REGION ?= us-east-1
 N          ?= 5
 export AWS_DEFAULT_REGION := $(AWS_REGION)
@@ -27,30 +30,41 @@ SAM_DEPLOY := --region $(AWS_REGION) --resolve-s3 --capabilities CAPABILITY_IAM 
 
 .DEFAULT_GOAL := help
 
-.PHONY: help test test-fundamentos test-runtimes test-snapstart \
+.PHONY: help test test-fundamentos test-runtimes test-snapstart test-fanout \
+        test-idempotencia test-dlq \
         build deploy deploy-fundamentos deploy-runtimes deploy-snapstart \
+        deploy-fanout fanout deploy-idem idem deploy-dlq dlq \
         invoke-alo invoke-ciclo gatilhos medir snapstart outputs clean up down
 
 help:
 	@echo "Laboratórios Serverless — alvos disponíveis:"
 	@echo ""
 	@echo "  Testes de unidade (sem AWS):"
-	@echo "    test               Todos os testes (py + go + java)"
-	@echo "    test-fundamentos   pytest das Partes 1-3"
-	@echo "    test-runtimes      pytest + go test + mvn test (Parte 4)"
-	@echo "    test-snapstart     mvn test (Parte 5)"
+	@echo "    test               Todos os testes (lab-01 + lab-02)"
+	@echo "    test-fundamentos   pytest das Partes 1-3 (U1-LAB01)"
+	@echo "    test-runtimes      pytest + go test + mvn test (U1-LAB01 P4)"
+	@echo "    test-snapstart     mvn test (U1-LAB01 P5)"
+	@echo "    test-fanout        pytest do fan-out SNS+SQS (U1-LAB02)"
+	@echo "    test-idempotencia  pytest da idempotência DynamoDB (U1-LAB03)"
+	@echo "    test-dlq           pytest da resiliência e DLQ (U1-LAB04)"
 	@echo ""
 	@echo "  Nuvem (exigem credenciais AWS):"
-	@echo "    build              sam build das 3 partes"
-	@echo "    deploy             Implanta os 3 stacks"
+	@echo "    build              sam build das partes do U1-LAB01"
+	@echo "    deploy             Implanta os 3 stacks do U1-LAB01"
 	@echo "    deploy-fundamentos | deploy-runtimes | deploy-snapstart"
-	@echo "    invoke-alo         Invoca o alô mundo (Parte 1)"
-	@echo "    invoke-ciclo       Invoca 3x o ciclo de vida (Parte 3)"
-	@echo "    gatilhos           Dispara os 4 gatilhos (Parte 2)"
-	@echo "    medir [N=5]        Comparativo de cold start (Parte 4)"
-	@echo "    snapstart          Comparativo com/sem SnapStart (Parte 5)"
+	@echo "    invoke-alo         Invoca o alô mundo (U1-LAB01 P1)"
+	@echo "    invoke-ciclo       Invoca 3x o ciclo de vida (U1-LAB01 P3)"
+	@echo "    gatilhos           Dispara os 4 gatilhos (U1-LAB01 P2)"
+	@echo "    medir [N=5]        Comparativo de cold start (U1-LAB01 P4)"
+	@echo "    snapstart          Comparativo com/sem SnapStart (U1-LAB01 P5)"
+	@echo "    deploy-fanout      Implanta o fan-out SNS+SQS (U1-LAB02)"
+	@echo "    fanout             Publica 1 pedido e observa os 2 consumidores"
+	@echo "    deploy-idem        Implanta a idempotência SQS+DynamoDB (U1-LAB03)"
+	@echo "    idem               Envia o mesmo pedido 2x e prova a idempotência"
+	@echo "    deploy-dlq         Implanta a DLQ e resiliência (U1-LAB04)"
+	@echo "    dlq                Envia lote com veneno e observa a DLQ"
 	@echo "    outputs            Mostra os outputs dos stacks"
-	@echo "    clean              Remove os 3 stacks + artefatos locais"
+	@echo "    clean              Remove todos os stacks + artefatos locais"
 	@echo ""
 	@echo "  LocalStack (opcional, Partes 1-3):"
 	@echo "    up | down          Sobe/derruba o LocalStack"
@@ -62,7 +76,7 @@ $(PYTEST):
 	python3 -m venv $(VENV)
 	$(VENV)/bin/pip install -q --upgrade pip pytest
 
-test: test-fundamentos test-runtimes test-snapstart
+test: test-fundamentos test-runtimes test-snapstart test-fanout test-idempotencia test-dlq
 	@echo "✓ Todos os testes de unidade passaram"
 
 test-fundamentos: $(PYTEST)
@@ -78,6 +92,18 @@ test-runtimes: $(PYTEST)
 test-snapstart:
 	@echo "▶ Parte 5 — mvn test (SnapStart, Init pesada ~1,5s)"
 	cd $(LAB)/snapstart/java && mvn test --no-transfer-progress
+
+test-fanout: $(PYTEST)
+	@echo "▶ U1-LAB02 — pytest (duplo envelope SNS→SQS e montagem de evento)"
+	cd $(LAB02) && $(PYTEST) -q
+
+test-idempotencia: $(PYTEST)
+	@echo "▶ U1-LAB03 — pytest (chave de idempotência, item com TTL, duplicata)"
+	cd $(LAB03) && $(PYTEST) -q
+
+test-dlq: $(PYTEST)
+	@echo "▶ U1-LAB04 — pytest (validação do veneno e falha parcial de lote)"
+	cd $(LAB04) && $(PYTEST) -q
 
 # ==========================================================================
 # Nuvem — exigem credenciais AWS (aws configure)
@@ -98,6 +124,24 @@ deploy-runtimes:
 
 deploy-snapstart:
 	cd $(LAB)/snapstart && sam build && sam deploy --stack-name u1lab01-snapstart $(SAM_DEPLOY)
+
+deploy-fanout:
+	cd $(LAB02) && sam build && sam deploy --stack-name u1lab02-fanout $(SAM_DEPLOY)
+
+fanout:
+	cd $(LAB02)/scripts && bash publicar-e-observar.sh
+
+deploy-idem:
+	cd $(LAB03) && sam build && sam deploy --stack-name u1lab03-idempotencia $(SAM_DEPLOY)
+
+idem:
+	cd $(LAB03)/scripts && bash enviar-duplicado-e-observar.sh
+
+deploy-dlq:
+	cd $(LAB04) && sam build && sam deploy --stack-name u1lab04-dlq $(SAM_DEPLOY)
+
+dlq:
+	cd $(LAB04)/scripts && bash veneno-e-dlq.sh
 
 invoke-alo:
 	@aws lambda invoke --function-name u1lab01-alo --log-type Tail \
@@ -120,7 +164,7 @@ snapstart:
 	cd $(LAB)/scripts && bash comparar-snapstart.sh
 
 outputs:
-	@for s in u1lab01-partes1a3 u1lab01-runtimes u1lab01-snapstart; do \
+	@for s in u1lab01-partes1a3 u1lab01-runtimes u1lab01-snapstart u1lab02-fanout u1lab03-idempotencia u1lab04-dlq; do \
 	  echo "== $$s =="; \
 	  aws cloudformation describe-stacks --stack-name $$s \
 	    --query 'Stacks[0].Outputs[].{Chave:OutputKey,Valor:OutputValue}' \
@@ -131,9 +175,13 @@ clean:
 	-aws cloudformation delete-stack --stack-name u1lab01-partes1a3
 	-aws cloudformation delete-stack --stack-name u1lab01-runtimes
 	-aws cloudformation delete-stack --stack-name u1lab01-snapstart
+	-aws cloudformation delete-stack --stack-name u1lab02-fanout
+	-aws cloudformation delete-stack --stack-name u1lab03-idempotencia
+	-aws cloudformation delete-stack --stack-name u1lab04-dlq
 	-cd $(LAB)/runtimes/java && mvn -q clean --no-transfer-progress
 	-cd $(LAB)/snapstart/java && mvn -q clean --no-transfer-progress
 	rm -rf $(LAB)/fundamentos/.aws-sam $(LAB)/runtimes/.aws-sam $(LAB)/snapstart/.aws-sam
+	rm -rf $(LAB02)/.aws-sam $(LAB03)/.aws-sam $(LAB04)/.aws-sam
 	@echo "Stacks marcados para remoção (assíncrono) e artefatos locais limpos."
 
 # ==========================================================================

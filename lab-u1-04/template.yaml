@@ -1,0 +1,97 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  U1-LAB04 · DLQ e resiliência. Um consumidor lê lotes da fila; mensagens boas
+  são processadas e apagadas, uma mensagem "veneno" falha em toda tentativa,
+  é reentregue até maxReceiveCount e movida para a DLQ. Falha parcial de lote
+  (ReportBatchItemFailures) evita reprocessar as boas.
+
+Globals:
+  Function:
+    Runtime: python3.12
+    MemorySize: 256
+    Architectures:
+      - arm64
+
+Resources:
+
+  # =========================================================================
+  # A DLQ — destino das mensagens que esgotaram as tentativas. Retenção longa
+  # para dar tempo de inspecionar o "veneno". Não tem consumidor: o objetivo é
+  # justamente TIRAR a mensagem do fluxo até alguém olhar.
+  # =========================================================================
+  FilaDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: u1lab04-fila-dlq
+      MessageRetentionPeriod: 1209600  # 14 dias (máximo)
+
+  # =========================================================================
+  # A FILA PRINCIPAL — com RedrivePolicy apontando para a DLQ. Depois de ser
+  # recebida maxReceiveCount vezes sem ser apagada, a SQS move a mensagem para
+  # a DLQ automaticamente. VisibilityTimeout curto acelera as tentativas do lab.
+  # =========================================================================
+  FilaPedidos:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: u1lab04-fila-pedidos
+      VisibilityTimeout: 10
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt FilaDLQ.Arn
+        maxReceiveCount: 3
+
+  # =========================================================================
+  # PRODUTOR — envia um lote (bons + veneno) de uma vez, para exercitar a
+  # falha parcial. Aceita lista no corpo.
+  # =========================================================================
+  PublicarFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: u1lab04-publicar
+      Handler: publicar.lambda_handler
+      CodeUri: src/
+      Timeout: 30
+      Environment:
+        Variables:
+          FILA_URL: !Ref FilaPedidos
+      Policies:
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt FilaPedidos.QueueName
+      Events:
+        Http:
+          Type: HttpApi
+          Properties:
+            Path: /pedidos
+            Method: post
+
+  # =========================================================================
+  # CONSUMIDOR — Timeout curto (5s) < VisibilityTimeout (10s), como manda a
+  # regra. FunctionResponseTypes: ReportBatchItemFailures habilita a falha
+  # parcial de lote — o handler devolve só os itemIdentifier que falharam.
+  # =========================================================================
+  ConsumidorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: u1lab04-consumidor
+      Handler: consumidor.lambda_handler
+      CodeUri: src/
+      Timeout: 5
+      Events:
+        Fila:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt FilaPedidos.Arn
+            BatchSize: 10
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
+
+Outputs:
+  UrlHttpApi:
+    Description: Endpoint para enviar um lote de pedidos (POST com array JSON)
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/pedidos"
+  FilaUrl:
+    Description: URL da fila principal
+    Value: !Ref FilaPedidos
+  DLQUrl:
+    Description: URL da dead-letter queue
+    Value: !Ref FilaDLQ

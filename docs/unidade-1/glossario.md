@@ -160,7 +160,49 @@ Gatilho HTTP. No payload HTTP API v2, o `event` traz `requestContext.http` com m
 <a id="sqs"></a>
 ### SQS (Simple Queue Service)
 
-Fila. Entrega mensagens em **lotes** (`event['Records']`, cada um com `eventSource == aws:sqs`). Entrega *at-least-once* — uma mensagem pode chegar duas vezes (motivo da [idempotência](#idempotencia), tratada em labs seguintes).
+Fila. Entrega mensagens em **lotes** (`event['Records']`, cada um com `eventSource == aws:sqs`). Modelo *pull*: o consumidor busca no seu ritmo. Entrega *at-least-once* — uma mensagem pode chegar duas vezes (motivo da [idempotência](#idempotencia), tratada em labs seguintes).
+
+---
+
+<a id="sns"></a>
+### SNS (Simple Notification Service)
+
+Barramento pub/sub por **tópico**. Modelo *push*: ao publicar, o SNS empurra uma cópia da mensagem a **cada** assinante. Quem publica não sabe quantos assinantes existem — é o ponto de desacoplamento do [fan-out](#fan-out). Assinantes comuns: filas [SQS](#sqs), funções [Lambda](#lambda), HTTP, e-mail.
+
+---
+
+<a id="fan-out"></a>
+### Fan-out (SNS + SQS)
+
+Padrão em que uma publicação vira N entregas independentes: [SNS](#sns) na frente espalha a mensagem; uma [SQS](#sqs) por consumidor amortece o pico e **isola falhas** (se um consumidor trava, sua fila enche sem afetar os outros). Detalhe de implementação: na entrega padrão SNS→SQS, o evento chega em **duplo envelope** — o `body` do registro SQS é o envelope do SNS, e o evento de domínio está no campo `Message` (string JSON), exigindo dois `json.loads`.
+
+---
+
+<a id="dlq"></a>
+### DLQ (Dead-Letter Queue)
+
+Fila para onde vão as mensagens que falharam o processamento após esgotar as tentativas (`maxReceiveCount`). Isola o "veneno" — a mensagem que sempre quebra — para inspeção posterior, sem travar a fila principal num loop de reentrega. Tema do U1-LAB04.
+
+---
+
+<a id="dynamodb"></a>
+### DynamoDB
+
+Banco NoSQL gerenciado da AWS, chave-valor/documento. No modo *on-demand* (`PAY_PER_REQUEST`) não há capacidade a provisionar — combina com o serverless. No U1-LAB03 é o armazém de [idempotência](#idempotencia): a gravação condicional (ver [conditional write](#conditional-write)) usa a chave de partição para deduplicar, e o [TTL](#ttl) expira os registros.
+
+---
+
+<a id="conditional-write"></a>
+### Conditional write
+
+Gravação no [DynamoDB](#dynamodb) que só acontece se uma condição for satisfeita — p. ex. `attribute_not_exists(pedidoId)` ("grave se ainda não existe"). Teste e gravação são **atômicos**: é o que torna a [idempotência](#idempotencia) correta sob concorrência, não só sob repetição. Quando a condição falha, o serviço levanta `ConditionalCheckFailedException`.
+
+---
+
+<a id="ttl"></a>
+### TTL (Time to Live)
+
+Atributo com o *epoch* em que o item deve expirar; o [DynamoDB](#dynamodb) o remove automaticamente depois disso. No U1-LAB03 impede que o armazém de deduplicação cresça para sempre — a janela é escolhida pela realidade das duplicatas (minutos/horas de retry → dias de TTL).
 
 ---
 
@@ -181,4 +223,4 @@ Extensão do CloudFormation para descrever recursos serverless como código (`te
 <a id="idempotencia"></a>
 ### Idempotência
 
-Propriedade de processar a mesma mensagem N vezes com o mesmo efeito de processá-la uma vez. Necessária porque filas como a [SQS](#sqs) entregam *at-least-once*. Aprofundada no lab de fan-out e idempotência (U1V8).
+Propriedade de processar a mesma mensagem N vezes com o mesmo efeito de processá-la uma vez. Necessária porque filas como a [SQS](#sqs) entregam *at-least-once*. Aprofundada no U1-LAB03 (idempotência com Lambda + DynamoDB).

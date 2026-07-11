@@ -1,0 +1,148 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  U1-LAB02 · Fan-out com SNS + SQS. Um produtor publica PedidoCriado num
+  tópico SNS; o SNS entrega uma cópia a cada fila SQS assinante; cada fila
+  dispara seu próprio Lambda consumidor. O produtor não conhece os consumidores.
+
+Globals:
+  Function:
+    Runtime: python3.12
+    MemorySize: 256
+    Timeout: 30
+    Architectures:
+      - arm64
+
+Resources:
+
+  # =========================================================================
+  # O TÓPICO — ponto de desacoplamento. Quem publica aqui não sabe quem lê.
+  # =========================================================================
+  TopicoPedidos:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: u1lab02-pedidos
+
+  # =========================================================================
+  # PRODUTOR — publica UMA vez no tópico. O fan-out é responsabilidade do SNS.
+  # Exposto por HTTP para você disparar com um curl.
+  # =========================================================================
+  PublicarFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: u1lab02-publicar
+      Handler: publicar.lambda_handler
+      CodeUri: src/
+      Environment:
+        Variables:
+          TOPICO_ARN: !Ref TopicoPedidos
+      Policies:
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt TopicoPedidos.TopicName
+      Events:
+        Http:
+          Type: HttpApi
+          Properties:
+            Path: /pedido
+            Method: post
+
+  # =========================================================================
+  # AS FILAS — uma por consumidor. Cada uma recebe uma cópia independente.
+  # Filas separadas (e não uma só) são o que dá isolamento: se o consumidor
+  # de notificação travar, as mensagens dele empilham NA FILA DELE, sem
+  # afetar o estoque.
+  # =========================================================================
+  FilaEstoque:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: u1lab02-fila-estoque
+
+  FilaNotificacao:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: u1lab02-fila-notificacao
+
+  # Assinaturas SNS→SQS. Cada assinatura liga uma fila ao tópico. Adicionar um
+  # consumidor no futuro = mais uma fila + mais uma assinatura, sem tocar no
+  # produtor.
+  AssinaturaEstoque:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref TopicoPedidos
+      Protocol: sqs
+      Endpoint: !GetAtt FilaEstoque.Arn
+
+  AssinaturaNotificacao:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref TopicoPedidos
+      Protocol: sqs
+      Endpoint: !GetAtt FilaNotificacao.Arn
+
+  # Política que autoriza o SNS a entregar nas filas. Sem isto, a entrega
+  # SNS→SQS é silenciosamente negada (a mensagem some sem erro visível).
+  PoliticaFilas:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref FilaEstoque
+        - !Ref FilaNotificacao
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PermitirEntregaDoSNS
+            Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action: sqs:SendMessage
+            Resource:
+              - !GetAtt FilaEstoque.Arn
+              - !GetAtt FilaNotificacao.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref TopicoPedidos
+
+  # =========================================================================
+  # OS CONSUMIDORES — um por fila. Mesmo código-base (src/), handlers
+  # diferentes. Cada um reage ao mesmo PedidoCriado, de forma independente.
+  # SAM cria o EventSourceMapping e as permissões de leitura da fila.
+  # =========================================================================
+  ConsumidorEstoque:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: u1lab02-consumidor-estoque
+      Handler: consumidor_estoque.lambda_handler
+      CodeUri: src/
+      Events:
+        Fila:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt FilaEstoque.Arn
+            BatchSize: 5
+
+  ConsumidorNotificacao:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: u1lab02-consumidor-notificacao
+      Handler: consumidor_notificacao.lambda_handler
+      CodeUri: src/
+      Events:
+        Fila:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt FilaNotificacao.Arn
+            BatchSize: 5
+
+Outputs:
+  UrlHttpApi:
+    Description: Endpoint para publicar um pedido (POST com JSON no corpo)
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/pedido"
+  TopicoArn:
+    Description: ARN do tópico SNS de pedidos
+    Value: !Ref TopicoPedidos
+  FilaEstoqueUrl:
+    Description: URL da fila SQS do consumidor de estoque
+    Value: !Ref FilaEstoque
+  FilaNotificacaoUrl:
+    Description: URL da fila SQS do consumidor de notificação
+    Value: !Ref FilaNotificacao

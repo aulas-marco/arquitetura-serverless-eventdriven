@@ -48,4 +48,4 @@ O snapshot fotografa o estado gerado na Init. Aleatoriedade, conexões abertas e
 
 ---
 
-⬅️ [Eventos e gatilhos](3-eventos-e-gatilhos.md) · [Demo: U1-LAB01 ➡️](../02-demos/u1-01.md)
+⬅️ [Eventos e gatilhos](3-eventos-e-gatilhos.md) · [Mensageria e fan-out ➡️](5-mensageria-e-fanout.md)
