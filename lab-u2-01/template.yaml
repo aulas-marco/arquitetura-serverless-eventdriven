@@ -1,0 +1,84 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  U2-LAB01 · Event store append-only. Uma tabela DynamoDB guarda a sequência
+  imutável de eventos por conta (PK=contaId, SK=sequencia). Comandos carregam os
+  eventos, reconstroem o estado, decidem e gravam com concorrência otimística
+  (conditional write na sequência). O estado nunca é sobrescrito.
+
+Globals:
+  Function:
+    Runtime: python3.12
+    MemorySize: 256
+    Timeout: 15
+    Architectures:
+      - arm64
+
+Resources:
+
+  # =========================================================================
+  # O EVENT STORE — append-only. A chave composta (contaId, sequencia) é o que
+  # dá a concorrência otimística: gravar a sequência N só passa se ninguém já
+  # gravou N (conditional write no handler). On-demand: nada a provisionar.
+  # =========================================================================
+  TabelaEventos:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: u2lab01-eventos
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: contaId
+          AttributeType: S
+        - AttributeName: sequencia
+          AttributeType: N
+      KeySchema:
+        - AttributeName: contaId
+          KeyType: HASH
+        - AttributeName: sequencia
+          KeyType: RANGE
+
+  # =========================================================================
+  # O HANDLER — comando e consulta num só Lambda (a separação CQRS vem no
+  # U2-LAB03). Quatro rotas HTTP na mesma função.
+  # =========================================================================
+  EventStoreFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: u2lab01-eventstore
+      Handler: app.lambda_handler
+      CodeUri: src/
+      Environment:
+        Variables:
+          TABELA: !Ref TabelaEventos
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TabelaEventos
+      Events:
+        CriarConta:
+          Type: HttpApi
+          Properties:
+            Path: /contas
+            Method: post
+        Depositar:
+          Type: HttpApi
+          Properties:
+            Path: /contas/{contaId}/depositos
+            Method: post
+        Sacar:
+          Type: HttpApi
+          Properties:
+            Path: /contas/{contaId}/saques
+            Method: post
+        Consultar:
+          Type: HttpApi
+          Properties:
+            Path: /contas/{contaId}
+            Method: get
+
+Outputs:
+  UrlHttpApi:
+    Description: Base do endpoint HTTP (sem barra final)
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+  TabelaNome:
+    Description: Nome da tabela de eventos (event store)
+    Value: !Ref TabelaEventos

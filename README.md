@@ -25,7 +25,20 @@ Cada laboratório é uma pasta autocontida (`lab-uNvV-slug/`) com seu próprio t
 │   ├── src/                        ← produtor + consumidor resiliente (Python)
 │   ├── tests/                      ← pytest (validação do veneno, falha parcial)
 │   └── scripts/                    ← veneno-e-dlq.sh
+├── lab-u2-01/   ← U2-LAB01: event store append-only (Event Sourcing)
+│   ├── src/                        ← domínio + comandos (puro) + handler (Python)
+│   ├── tests/                      ← pytest (replay determinístico, invariantes)
+│   └── scripts/                    ← conta-e-replay.sh
+├── lab-u2-02/   ← U2-LAB02: replay e snapshots
+│   ├── src/                        ← + snapshot (materializar estado, delta)
+│   ├── tests/                      ← pytest (snapshot+delta ≡ replay completo)
+│   └── scripts/                    ← snapshot-e-delta.sh
+├── lab-u2-03/   ← U2-LAB03: CQRS e projeção (DynamoDB Streams)
+│   ├── src/                        ← comando · projeção · consulta · rebuild (Python)
+│   ├── tests/                      ← pytest (projeção incremental + idempotência)
+│   └── scripts/                    ← cqrs-projecao.sh
 ├── docs/unidade-1/                 ← documentação da Unidade 1 (fundamentos, demos, arquitetura, glossário)
+├── docs/unidade-2/                 ← documentação da Unidade 2 (Event Sourcing e CQRS)
 ├── Makefile                        ← interface de comandos
 └── README.md
 ```
@@ -38,7 +51,10 @@ Cada laboratório é uma pasta autocontida (`lab-uNvV-slug/`) com seu próprio t
 | [`lab-u1-02`](lab-u1-02/) | 1 | Fan-out com SNS + SQS | Python + SAM | ✅ |
 | [`lab-u1-03`](lab-u1-03/) | 1 | Idempotência com Lambda + DynamoDB | Python + SAM | ✅ |
 | [`lab-u1-04`](lab-u1-04/) | 1 | DLQ e resiliência com Lambda | Python + SAM | ✅ |
-| `lab-u2-*`–`u3-*` | 2–3 | Event Sourcing, CQRS, Kafka, IA | Python + SAM/Kafka | 🔜 |
+| [`lab-u2-01`](lab-u2-01/) | 2 | Event store append-only (Event Sourcing) | Python + SAM · DynamoDB | ✅ |
+| [`lab-u2-02`](lab-u2-02/) | 2 | Replay e snapshots | Python + SAM · DynamoDB | ✅ |
+| [`lab-u2-03`](lab-u2-03/) | 2 | CQRS e projeção (DynamoDB Streams) | Python + SAM · DynamoDB | ✅ |
+| `lab-u3-*` | 3 | Kafka e IA | Python + SAM/Kafka | 🔜 |
 
 ## Pré-requisitos
 
@@ -67,6 +83,9 @@ make test-snapstart    # U1-LAB01 Parte 5 (mvn test)
 make test-fanout       # U1-LAB02 fan-out (pytest)
 make test-idempotencia # U1-LAB03 idempotência (pytest)
 make test-dlq          # U1-LAB04 DLQ e resiliência (pytest)
+make test-eventstore   # U2-LAB01 event store (pytest)
+make test-snapshots    # U2-LAB02 replay e snapshots (pytest)
+make test-cqrs         # U2-LAB03 projeção CQRS (pytest)
 
 # Nuvem — requerem credenciais AWS
 make deploy            # implanta os 3 stacks do U1-LAB01
@@ -81,6 +100,12 @@ make deploy-idem       # U1-LAB03 — implanta a idempotência SQS+DynamoDB
 make idem              # U1-LAB03 — envia o mesmo pedido 2x e prova a idempotência
 make deploy-dlq        # U1-LAB04 — implanta a DLQ e resiliência
 make dlq               # U1-LAB04 — envia lote com veneno e observa a DLQ
+make deploy-eventstore # U2-LAB01 — implanta o event store DynamoDB
+make eventstore        # U2-LAB01 — cria conta, deposita, saca e faz replay
+make deploy-snapshots  # U2-LAB02 — implanta o replay com snapshots
+make snapshots         # U2-LAB02 — snapshot e reprocessa só o delta
+make deploy-cqrs       # U2-LAB03 — implanta o CQRS + projeção via Streams
+make cqrs              # U2-LAB03 — escreve, projeta, transfere e faz rebuild
 make outputs           # outputs dos stacks
 make clean             # remove todos os stacks + artefatos locais
 
@@ -110,6 +135,9 @@ As Partes 1–3 rodam em AWS real **ou** LocalStack; as Partes 4–5 (cold start
 | U1-LAB02 | Python 3.12 · AWS SAM · Lambda · SNS · SQS · API Gateway · pytest |
 | U1-LAB03 | Python 3.12 · AWS SAM · Lambda · SQS · DynamoDB (TTL) · API Gateway · pytest |
 | U1-LAB04 | Python 3.12 · AWS SAM · Lambda · SQS · DLQ (redrive) · ReportBatchItemFailures · API Gateway · pytest |
+| U2-LAB01 | Python 3.12 · AWS SAM · Lambda · DynamoDB (event store, conditional write) · API Gateway · pytest |
+| U2-LAB02 | Python 3.12 · AWS SAM · Lambda · DynamoDB (event store + snapshots) · API Gateway · pytest |
+| U2-LAB03 | Python 3.12 · AWS SAM · Lambda · DynamoDB Streams · projeção (read-model) · TransactWriteItems · API Gateway · pytest |
 
 ## Relação com a disciplina irmã
 

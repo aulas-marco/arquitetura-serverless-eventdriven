@@ -1,0 +1,157 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  U2-LAB03 · CQRS e projeção. O event store (com DynamoDB Streams) dispara um
+  Lambda de projeção que mantém a tabela read-model `saldos`. A escrita grava
+  eventos; a leitura lê só a projeção (nunca faz replay). Consistência eventual
+  entre os dois lados; rebuild reprocessa o store; transferência atômica com
+  TransactWriteItems.
+
+Globals:
+  Function:
+    Runtime: python3.12
+    MemorySize: 256
+    Timeout: 30
+    Architectures:
+      - arm64
+
+Resources:
+
+  # Event store COM stream: cada INSERT alimenta a projeção.
+  TabelaEventos:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: u2lab03-eventos
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: contaId
+          AttributeType: S
+        - AttributeName: sequencia
+          AttributeType: N
+      KeySchema:
+        - AttributeName: contaId
+          KeyType: HASH
+        - AttributeName: sequencia
+          KeyType: RANGE
+      StreamSpecification:
+        StreamViewType: NEW_IMAGE
+
+  # Modelo de LEITURA: uma linha por conta, pronta para consulta em O(1).
+  TabelaSaldos:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: u2lab03-saldos
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: contaId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: contaId
+          KeyType: HASH
+
+  # ESCRITA — grava eventos (create/deposit/saque/transferência atômica).
+  ComandoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: u2lab03-comando
+      Handler: comando.lambda_handler
+      CodeUri: src/
+      Environment:
+        Variables:
+          TABELA_EVENTOS: !Ref TabelaEventos
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TabelaEventos
+      Events:
+        CriarConta:
+          Type: HttpApi
+          Properties:
+            Path: /contas
+            Method: post
+        Depositar:
+          Type: HttpApi
+          Properties:
+            Path: /contas/{contaId}/depositos
+            Method: post
+        Sacar:
+          Type: HttpApi
+          Properties:
+            Path: /contas/{contaId}/saques
+            Method: post
+        Transferir:
+          Type: HttpApi
+          Properties:
+            Path: /transferencias
+            Method: post
+
+  # PROJEÇÃO — gatilho do stream do event store; mantém a tabela `saldos`.
+  ProjecaoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: u2lab03-projecao
+      Handler: projecao.lambda_handler
+      CodeUri: src/
+      Environment:
+        Variables:
+          TABELA_SALDOS: !Ref TabelaSaldos
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TabelaSaldos
+      Events:
+        Stream:
+          Type: DynamoDB
+          Properties:
+            Stream: !GetAtt TabelaEventos.StreamArn
+            StartingPosition: TRIM_HORIZON
+            BatchSize: 10
+
+  # LEITURA — lê SÓ a projeção. Nunca toca no event store.
+  ConsultaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: u2lab03-consulta
+      Handler: consulta.lambda_handler
+      CodeUri: src/
+      Environment:
+        Variables:
+          TABELA_SALDOS: !Ref TabelaSaldos
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref TabelaSaldos
+      Events:
+        Consultar:
+          Type: HttpApi
+          Properties:
+            Path: /contas/{contaId}
+            Method: get
+
+  # REBUILD — reprocessa o event store inteiro e reescreve a projeção.
+  RebuildFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: u2lab03-rebuild
+      Handler: rebuild.lambda_handler
+      CodeUri: src/
+      Environment:
+        Variables:
+          TABELA_EVENTOS: !Ref TabelaEventos
+          TABELA_SALDOS: !Ref TabelaSaldos
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref TabelaEventos
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TabelaSaldos
+      Events:
+        Rebuild:
+          Type: HttpApi
+          Properties:
+            Path: /projecao/rebuild
+            Method: post
+
+Outputs:
+  UrlHttpApi:
+    Description: Base do endpoint HTTP (sem barra final)
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+  TabelaSaldos:
+    Description: Tabela de projeção (modelo de leitura)
+    Value: !Ref TabelaSaldos

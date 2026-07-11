@@ -1,0 +1,99 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  U2-LAB02 · Replay e snapshots. O event store append-only do U2-LAB01 ganha uma
+  tabela de snapshots. Um snapshot materializa o estado numa sequência; a
+  consulta carrega o snapshot mais recente e reprocessa só o delta de eventos
+  posteriores, evitando reler a história inteira.
+
+Globals:
+  Function:
+    Runtime: python3.12
+    MemorySize: 256
+    Timeout: 15
+    Architectures:
+      - arm64
+
+Resources:
+
+  TabelaEventos:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: u2lab02-eventos
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: contaId
+          AttributeType: S
+        - AttributeName: sequencia
+          AttributeType: N
+      KeySchema:
+        - AttributeName: contaId
+          KeyType: HASH
+        - AttributeName: sequencia
+          KeyType: RANGE
+
+  # Snapshot: um item por conta (PK=contaId). Guarda o estado materializado e a
+  # última sequência coberta. É cache descartável — pode ser apagado e refeito.
+  TabelaSnapshots:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: u2lab02-snapshots
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: contaId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: contaId
+          KeyType: HASH
+
+  EventStoreFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: u2lab02-snapshots
+      Handler: app.lambda_handler
+      CodeUri: src/
+      Environment:
+        Variables:
+          TABELA_EVENTOS: !Ref TabelaEventos
+          TABELA_SNAPSHOTS: !Ref TabelaSnapshots
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TabelaEventos
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TabelaSnapshots
+      Events:
+        CriarConta:
+          Type: HttpApi
+          Properties:
+            Path: /contas
+            Method: post
+        Depositar:
+          Type: HttpApi
+          Properties:
+            Path: /contas/{contaId}/depositos
+            Method: post
+        Sacar:
+          Type: HttpApi
+          Properties:
+            Path: /contas/{contaId}/saques
+            Method: post
+        Snapshot:
+          Type: HttpApi
+          Properties:
+            Path: /contas/{contaId}/snapshot
+            Method: post
+        Consultar:
+          Type: HttpApi
+          Properties:
+            Path: /contas/{contaId}
+            Method: get
+        ConsultarCompleto:
+          Type: HttpApi
+          Properties:
+            Path: /contas/{contaId}/completo
+            Method: get
+
+Outputs:
+  UrlHttpApi:
+    Description: Base do endpoint HTTP (sem barra final)
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com"

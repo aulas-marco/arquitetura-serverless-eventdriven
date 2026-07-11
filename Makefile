@@ -11,6 +11,9 @@ LAB        := lab-u1-01
 LAB02      := lab-u1-02
 LAB03      := lab-u1-03
 LAB04      := lab-u1-04
+LABU201    := lab-u2-01
+LABU202    := lab-u2-02
+LABU203    := lab-u2-03
 AWS_REGION ?= us-east-1
 N          ?= 5
 export AWS_DEFAULT_REGION := $(AWS_REGION)
@@ -31,9 +34,11 @@ SAM_DEPLOY := --region $(AWS_REGION) --resolve-s3 --capabilities CAPABILITY_IAM 
 .DEFAULT_GOAL := help
 
 .PHONY: help test test-fundamentos test-runtimes test-snapstart test-fanout \
-        test-idempotencia test-dlq \
+        test-idempotencia test-dlq test-eventstore test-snapshots test-cqrs \
         build deploy deploy-fundamentos deploy-runtimes deploy-snapstart \
         deploy-fanout fanout deploy-idem idem deploy-dlq dlq \
+        deploy-eventstore eventstore deploy-snapshots snapshots \
+        deploy-cqrs cqrs \
         invoke-alo invoke-ciclo gatilhos medir snapstart outputs clean up down
 
 help:
@@ -47,6 +52,9 @@ help:
 	@echo "    test-fanout        pytest do fan-out SNS+SQS (U1-LAB02)"
 	@echo "    test-idempotencia  pytest da idempotência DynamoDB (U1-LAB03)"
 	@echo "    test-dlq           pytest da resiliência e DLQ (U1-LAB04)"
+	@echo "    test-eventstore    pytest do event store (U2-LAB01)"
+	@echo "    test-snapshots     pytest de replay e snapshots (U2-LAB02)"
+	@echo "    test-cqrs          pytest da projeção CQRS (U2-LAB03)"
 	@echo ""
 	@echo "  Nuvem (exigem credenciais AWS):"
 	@echo "    build              sam build das partes do U1-LAB01"
@@ -63,6 +71,12 @@ help:
 	@echo "    idem               Envia o mesmo pedido 2x e prova a idempotência"
 	@echo "    deploy-dlq         Implanta a DLQ e resiliência (U1-LAB04)"
 	@echo "    dlq                Envia lote com veneno e observa a DLQ"
+	@echo "    deploy-eventstore  Implanta o event store DynamoDB (U2-LAB01)"
+	@echo "    eventstore         Cria conta, deposita, saca e faz replay"
+	@echo "    deploy-snapshots   Implanta o replay com snapshots (U2-LAB02)"
+	@echo "    snapshots          Acumula eventos, tira snapshot e reprocessa só o delta"
+	@echo "    deploy-cqrs        Implanta o CQRS + projeção via Streams (U2-LAB03)"
+	@echo "    cqrs               Escreve, projeta, transfere e faz rebuild"
 	@echo "    outputs            Mostra os outputs dos stacks"
 	@echo "    clean              Remove todos os stacks + artefatos locais"
 	@echo ""
@@ -76,7 +90,8 @@ $(PYTEST):
 	python3 -m venv $(VENV)
 	$(VENV)/bin/pip install -q --upgrade pip pytest
 
-test: test-fundamentos test-runtimes test-snapstart test-fanout test-idempotencia test-dlq
+test: test-fundamentos test-runtimes test-snapstart test-fanout test-idempotencia test-dlq \
+      test-eventstore test-snapshots test-cqrs
 	@echo "✓ Todos os testes de unidade passaram"
 
 test-fundamentos: $(PYTEST)
@@ -104,6 +119,18 @@ test-idempotencia: $(PYTEST)
 test-dlq: $(PYTEST)
 	@echo "▶ U1-LAB04 — pytest (validação do veneno e falha parcial de lote)"
 	cd $(LAB04) && $(PYTEST) -q
+
+test-eventstore: $(PYTEST)
+	@echo "▶ U2-LAB01 — pytest (domínio da conta, replay e invariantes)"
+	cd $(LABU201) && $(PYTEST) -q
+
+test-snapshots: $(PYTEST)
+	@echo "▶ U2-LAB02 — pytest (replay a partir de base, snapshot = replay completo)"
+	cd $(LABU202) && $(PYTEST) -q
+
+test-cqrs: $(PYTEST)
+	@echo "▶ U2-LAB03 — pytest (projeção incremental e idempotência)"
+	cd $(LABU203) && $(PYTEST) -q
 
 # ==========================================================================
 # Nuvem — exigem credenciais AWS (aws configure)
@@ -143,6 +170,24 @@ deploy-dlq:
 dlq:
 	cd $(LAB04)/scripts && bash veneno-e-dlq.sh
 
+deploy-eventstore:
+	cd $(LABU201) && sam build && sam deploy --stack-name u2lab01-eventstore $(SAM_DEPLOY)
+
+eventstore:
+	cd $(LABU201)/scripts && bash conta-e-replay.sh
+
+deploy-snapshots:
+	cd $(LABU202) && sam build && sam deploy --stack-name u2lab02-snapshots $(SAM_DEPLOY)
+
+snapshots:
+	cd $(LABU202)/scripts && bash snapshot-e-delta.sh
+
+deploy-cqrs:
+	cd $(LABU203) && sam build && sam deploy --stack-name u2lab03-cqrs $(SAM_DEPLOY)
+
+cqrs:
+	cd $(LABU203)/scripts && bash cqrs-projecao.sh
+
 invoke-alo:
 	@aws lambda invoke --function-name u1lab01-alo --log-type Tail \
 	  --query 'LogResult' --output text /dev/null | base64 --decode | grep -E 'Alô|REPORT'
@@ -164,7 +209,7 @@ snapstart:
 	cd $(LAB)/scripts && bash comparar-snapstart.sh
 
 outputs:
-	@for s in u1lab01-partes1a3 u1lab01-runtimes u1lab01-snapstart u1lab02-fanout u1lab03-idempotencia u1lab04-dlq; do \
+	@for s in u1lab01-partes1a3 u1lab01-runtimes u1lab01-snapstart u1lab02-fanout u1lab03-idempotencia u1lab04-dlq u2lab01-eventstore u2lab02-snapshots u2lab03-cqrs; do \
 	  echo "== $$s =="; \
 	  aws cloudformation describe-stacks --stack-name $$s \
 	    --query 'Stacks[0].Outputs[].{Chave:OutputKey,Valor:OutputValue}' \
@@ -178,10 +223,13 @@ clean:
 	-aws cloudformation delete-stack --stack-name u1lab02-fanout
 	-aws cloudformation delete-stack --stack-name u1lab03-idempotencia
 	-aws cloudformation delete-stack --stack-name u1lab04-dlq
+	-aws cloudformation delete-stack --stack-name u2lab01-eventstore
+	-aws cloudformation delete-stack --stack-name u2lab02-snapshots
+	-aws cloudformation delete-stack --stack-name u2lab03-cqrs
 	-cd $(LAB)/runtimes/java && mvn -q clean --no-transfer-progress
 	-cd $(LAB)/snapstart/java && mvn -q clean --no-transfer-progress
 	rm -rf $(LAB)/fundamentos/.aws-sam $(LAB)/runtimes/.aws-sam $(LAB)/snapstart/.aws-sam
-	rm -rf $(LAB02)/.aws-sam $(LAB03)/.aws-sam $(LAB04)/.aws-sam
+	rm -rf $(LAB02)/.aws-sam $(LAB03)/.aws-sam $(LAB04)/.aws-sam $(LABU201)/.aws-sam $(LABU202)/.aws-sam $(LABU203)/.aws-sam
 	@echo "Stacks marcados para remoção (assíncrono) e artefatos locais limpos."
 
 # ==========================================================================
