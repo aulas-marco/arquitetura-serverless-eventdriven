@@ -1,0 +1,57 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  U3-LAB01 · Produtor Kinesis. Um stream de 4 shards recebe eventos de suporte
+  roteados pela PartitionKey (clienteId). O Kinesis escolhe o shard por hash da
+  chave, então todo evento de um mesmo cliente cai no mesmo shard — e em ordem.
+  Kinesis é o equivalente serverless do Kafka: shard ≈ partição, chave ≈ chave.
+
+Globals:
+  Function:
+    Runtime: python3.12
+    MemorySize: 256
+    Timeout: 15
+    Architectures:
+      - arm64
+
+Resources:
+
+  # O stream. 4 shards para o roteamento por hash da chave ser observável
+  # (clientes diferentes tendem a cair em shards diferentes).
+  StreamEventos:
+    Type: AWS::Kinesis::Stream
+    Properties:
+      Name: u3lab01-eventos-suporte
+      ShardCount: 4
+      RetentionPeriodHours: 24
+
+  ProdutorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: u3lab01-produtor
+      Handler: produtor.lambda_handler
+      CodeUri: src/
+      Environment:
+        Variables:
+          STREAM: !Ref StreamEventos
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - kinesis:PutRecord
+                - kinesis:PutRecords
+              Resource: !GetAtt StreamEventos.Arn
+      Events:
+        Publicar:
+          Type: HttpApi
+          Properties:
+            Path: /eventos
+            Method: post
+
+Outputs:
+  UrlHttpApi:
+    Description: Endpoint para publicar eventos (POST com objeto ou array JSON)
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/eventos"
+  StreamNome:
+    Description: Nome do stream Kinesis
+    Value: !Ref StreamEventos

@@ -14,6 +14,7 @@ LAB04      := lab-u1-04
 LABU201    := lab-u2-01
 LABU202    := lab-u2-02
 LABU203    := lab-u2-03
+LABU301    := lab-u3-01
 AWS_REGION ?= us-east-1
 N          ?= 5
 export AWS_DEFAULT_REGION := $(AWS_REGION)
@@ -35,10 +36,11 @@ SAM_DEPLOY := --region $(AWS_REGION) --resolve-s3 --capabilities CAPABILITY_IAM 
 
 .PHONY: help test test-fundamentos test-runtimes test-snapstart test-fanout \
         test-idempotencia test-dlq test-eventstore test-snapshots test-cqrs \
+        test-produtor \
         build deploy deploy-fundamentos deploy-runtimes deploy-snapstart \
         deploy-fanout fanout deploy-idem idem deploy-dlq dlq \
         deploy-eventstore eventstore deploy-snapshots snapshots \
-        deploy-cqrs cqrs \
+        deploy-cqrs cqrs deploy-produtor produtor \
         invoke-alo invoke-ciclo gatilhos medir snapstart outputs clean up down
 
 help:
@@ -55,6 +57,7 @@ help:
 	@echo "    test-eventstore    pytest do event store (U2-LAB01)"
 	@echo "    test-snapshots     pytest de replay e snapshots (U2-LAB02)"
 	@echo "    test-cqrs          pytest da projeção CQRS (U2-LAB03)"
+	@echo "    test-produtor      pytest do produtor Kinesis (U3-LAB01)"
 	@echo ""
 	@echo "  Nuvem (exigem credenciais AWS):"
 	@echo "    build              sam build das partes do U1-LAB01"
@@ -77,6 +80,8 @@ help:
 	@echo "    snapshots          Acumula eventos, tira snapshot e reprocessa só o delta"
 	@echo "    deploy-cqrs        Implanta o CQRS + projeção via Streams (U2-LAB03)"
 	@echo "    cqrs               Escreve, projeta, transfere e faz rebuild"
+	@echo "    deploy-produtor    Implanta o produtor Kinesis (U3-LAB01)"
+	@echo "    produtor           Publica eventos e mostra o roteamento por shard"
 	@echo "    outputs            Mostra os outputs dos stacks"
 	@echo "    clean              Remove todos os stacks + artefatos locais"
 	@echo ""
@@ -91,7 +96,7 @@ $(PYTEST):
 	$(VENV)/bin/pip install -q --upgrade pip pytest
 
 test: test-fundamentos test-runtimes test-snapstart test-fanout test-idempotencia test-dlq \
-      test-eventstore test-snapshots test-cqrs
+      test-eventstore test-snapshots test-cqrs test-produtor
 	@echo "✓ Todos os testes de unidade passaram"
 
 test-fundamentos: $(PYTEST)
@@ -131,6 +136,10 @@ test-snapshots: $(PYTEST)
 test-cqrs: $(PYTEST)
 	@echo "▶ U2-LAB03 — pytest (projeção incremental e idempotência)"
 	cd $(LABU203) && $(PYTEST) -q
+
+test-produtor: $(PYTEST)
+	@echo "▶ U3-LAB01 — pytest (montagem/validação de evento e registro Kinesis)"
+	cd $(LABU301) && $(PYTEST) -q
 
 # ==========================================================================
 # Nuvem — exigem credenciais AWS (aws configure)
@@ -188,6 +197,12 @@ deploy-cqrs:
 cqrs:
 	cd $(LABU203)/scripts && bash cqrs-projecao.sh
 
+deploy-produtor:
+	cd $(LABU301) && sam build && sam deploy --stack-name u3lab01-produtor $(SAM_DEPLOY)
+
+produtor:
+	cd $(LABU301)/scripts && bash publicar-e-rotear.sh
+
 invoke-alo:
 	@aws lambda invoke --function-name u1lab01-alo --log-type Tail \
 	  --query 'LogResult' --output text /dev/null | base64 --decode | grep -E 'Alô|REPORT'
@@ -209,7 +224,7 @@ snapstart:
 	cd $(LAB)/scripts && bash comparar-snapstart.sh
 
 outputs:
-	@for s in u1lab01-partes1a3 u1lab01-runtimes u1lab01-snapstart u1lab02-fanout u1lab03-idempotencia u1lab04-dlq u2lab01-eventstore u2lab02-snapshots u2lab03-cqrs; do \
+	@for s in u1lab01-partes1a3 u1lab01-runtimes u1lab01-snapstart u1lab02-fanout u1lab03-idempotencia u1lab04-dlq u2lab01-eventstore u2lab02-snapshots u2lab03-cqrs u3lab01-produtor; do \
 	  echo "== $$s =="; \
 	  aws cloudformation describe-stacks --stack-name $$s \
 	    --query 'Stacks[0].Outputs[].{Chave:OutputKey,Valor:OutputValue}' \
@@ -226,10 +241,11 @@ clean:
 	-aws cloudformation delete-stack --stack-name u2lab01-eventstore
 	-aws cloudformation delete-stack --stack-name u2lab02-snapshots
 	-aws cloudformation delete-stack --stack-name u2lab03-cqrs
+	-aws cloudformation delete-stack --stack-name u3lab01-produtor
 	-cd $(LAB)/runtimes/java && mvn -q clean --no-transfer-progress
 	-cd $(LAB)/snapstart/java && mvn -q clean --no-transfer-progress
 	rm -rf $(LAB)/fundamentos/.aws-sam $(LAB)/runtimes/.aws-sam $(LAB)/snapstart/.aws-sam
-	rm -rf $(LAB02)/.aws-sam $(LAB03)/.aws-sam $(LAB04)/.aws-sam $(LABU201)/.aws-sam $(LABU202)/.aws-sam $(LABU203)/.aws-sam
+	rm -rf $(LAB02)/.aws-sam $(LAB03)/.aws-sam $(LAB04)/.aws-sam $(LABU201)/.aws-sam $(LABU202)/.aws-sam $(LABU203)/.aws-sam $(LABU301)/.aws-sam
 	@echo "Stacks marcados para remoção (assíncrono) e artefatos locais limpos."
 
 # ==========================================================================
