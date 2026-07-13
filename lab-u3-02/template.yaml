@@ -1,0 +1,75 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  U3-LAB02 · Consumidores Kinesis. Dois Lambdas independentes consomem o mesmo
+  stream — cada um recebe TODOS os eventos, como consumer groups distintos no
+  Kafka. ConsumidorA usa ParallelizationFactor=4 (até 4 invocações concorrentes
+  por shard); ConsumidorB sem paralelização extra. BisectBatchOnFunctionError
+  demonstra at-least-once delivery.
+
+Parameters:
+  StreamNome:
+    Type: String
+    Default: u3lab01-eventos-suporte
+    Description: Nome do stream Kinesis criado pelo U3-LAB01
+
+Globals:
+  Function:
+    Runtime: python3.12
+    MemorySize: 256
+    Timeout: 15
+    Architectures:
+      - arm64
+
+Resources:
+
+  ConsumidorAFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: u3lab02-consumidor-a
+      Handler: consumidor.lambda_handler
+      CodeUri: src/
+      Environment:
+        Variables:
+          CONSUMIDOR: consumidor-a
+      Policies:
+        - KinesisStreamReadPolicy:
+            StreamName: !Ref StreamNome
+      Events:
+        Kinesis:
+          Type: Kinesis
+          Properties:
+            Stream: !Sub "arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${StreamNome}"
+            StartingPosition: LATEST
+            BatchSize: 10
+            ParallelizationFactor: 4
+            BisectBatchOnFunctionError: true
+
+  ConsumidorBFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: u3lab02-consumidor-b
+      Handler: consumidor.lambda_handler
+      CodeUri: src/
+      Environment:
+        Variables:
+          CONSUMIDOR: consumidor-b
+      Policies:
+        - KinesisStreamReadPolicy:
+            StreamName: !Ref StreamNome
+      Events:
+        Kinesis:
+          Type: Kinesis
+          Properties:
+            Stream: !Sub "arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${StreamNome}"
+            StartingPosition: LATEST
+            BatchSize: 10
+            BisectBatchOnFunctionError: true
+
+Outputs:
+  ConsumidorA:
+    Description: ARN do consumidor A (ParallelizationFactor=4)
+    Value: !GetAtt ConsumidorAFunction.Arn
+  ConsumidorB:
+    Description: ARN do consumidor B (sem paralelização adicional)
+    Value: !GetAtt ConsumidorBFunction.Arn

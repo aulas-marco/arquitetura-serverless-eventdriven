@@ -1,0 +1,105 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  U3-LAB03 · Classificador de tickets via IA. Tickets chegam por SQS;
+  o Lambda chama o Claude Haiku (Anthropic API) para classificar em
+  alta/baixa prioridade × técnico/comercial; resultados são roteados
+  para filas separadas. Cache DynamoDB com TTL 24h elimina chamadas
+  repetidas à API para textos já processados.
+
+Parameters:
+  AnthropicApiKey:
+    Type: String
+    NoEcho: true
+    Description: >
+      Chave da API Anthropic (obtenha em console.anthropic.com).
+      Passe via: make deploy-classificador  (lê ANTHROPIC_API_KEY do ambiente).
+
+Globals:
+  Function:
+    Runtime: python3.12
+    MemorySize: 512
+    Timeout: 30
+    Architectures:
+      - arm64
+
+Resources:
+
+  FilaTickets:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: u3lab03-tickets
+      VisibilityTimeout: 180
+
+  FilaAlta:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: u3lab03-alta-prioridade
+
+  FilaBaixa:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: u3lab03-baixa-prioridade
+
+  FilaSem:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: u3lab03-sem-classificacao
+
+  TabelaCache:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: u3lab03-cache-classificacao
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: hash_texto
+          AttributeType: S
+      KeySchema:
+        - AttributeName: hash_texto
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+  ClassificadorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: u3lab03-classificador
+      Handler: classificador.lambda_handler
+      CodeUri: src/
+      Environment:
+        Variables:
+          TABELA_CACHE: !Ref TabelaCache
+          FILA_ALTA: !Ref FilaAlta
+          FILA_BAIXA: !Ref FilaBaixa
+          FILA_SEM: !Ref FilaSem
+          ANTHROPIC_API_KEY: !Ref AnthropicApiKey
+      Policies:
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt FilaAlta.QueueName
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt FilaBaixa.QueueName
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt FilaSem.QueueName
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TabelaCache
+      Events:
+        SQS:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt FilaTickets.Arn
+            BatchSize: 1
+
+Outputs:
+  FilaTicketsUrl:
+    Description: URL da fila de entrada (envie tickets aqui)
+    Value: !Ref FilaTickets
+  FilaAltaUrl:
+    Description: URL da fila de alta prioridade
+    Value: !Ref FilaAlta
+  FilaBaixaUrl:
+    Description: URL da fila de baixa prioridade
+    Value: !Ref FilaBaixa
+  FilaSemUrl:
+    Description: URL da fila sem classificação
+    Value: !Ref FilaSem
