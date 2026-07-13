@@ -52,8 +52,8 @@ flowchart TB
         S3[shard-3]
     end
 
-    K -->|ESM\nParallelizationFactor=4\nBisectBatchOnFunctionError=true| A{{ConsumidorA}}
-    K -->|ESM\nBisectBatchOnFunctionError=true| B{{ConsumidorB}}
+    K -->|ESM ParallelizationFactor=4 BisectBatch=true| A{{ConsumidorA}}
+    K -->|ESM BisectBatch=true| B{{ConsumidorB}}
 
     A --> CWA[(CloudWatch\nconsumidor-a)]
     B --> CWB[(CloudWatch\nconsumidor-b)]

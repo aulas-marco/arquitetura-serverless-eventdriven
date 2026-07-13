@@ -43,7 +43,7 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    H{{handler}} -->|append seq única| T[(DynamoDB u2lab01-eventos<br/>PK=contaId · SK=sequencia)]
+    H{{handler}} -->|append seq única| T[(DynamoDB u2lab01-eventos\nPK=contaId · SK=sequencia)]
     T -->|query ordenada| H
 ```
 
@@ -52,7 +52,7 @@ flowchart LR
 ```mermaid
 flowchart LR
     G["GET /contas/id"] --> H{{handler}}
-    H -->|get_item| S[(snapshots<br/>estado + ultimaSequencia)]
+    H -->|get_item| S[(snapshots\nestado + ultimaSequencia)]
     H -->|"query sequencia > ultimaSequencia"| E[(eventos)]
     S --> R[reconstruir_a_partir_de]
     E --> R
@@ -67,7 +67,7 @@ O snapshot dá o estado-base; só o delta de eventos é reprocessado. Snapshot �
 flowchart LR
     W[comando] -->|append evento| E[(eventos + Stream)]
     E -->|DynamoDB Stream| PJ{{projecao}}
-    PJ -->|upsert idempotente| SV[(saldos<br/>modelo de leitura)]
+    PJ -->|upsert idempotente| SV[(saldos\nmodelo de leitura)]
     R[consulta] -->|get_item| SV
     RB[rebuild] -->|scan| E
     RB -->|reescreve| SV

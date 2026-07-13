@@ -84,7 +84,7 @@ Mensagem boa é apagada; veneno é reentregue até o limite e movido à DLQ.
 ```mermaid
 flowchart LR
     P[publicar lote] --> Q[SQS fila-pedidos]
-    Q -- lote --> K{{consumidor<br/>ReportBatchItemFailures}}
+    Q -- lote --> K{{consumidor ReportBatchItemFailures}}
     K -- sucesso --> DEL[(apagada)]
     K -- batchItemFailures --> Q
     Q -- "recebida > maxReceiveCount" --> DLQ[SQS DLQ]
