@@ -139,11 +139,9 @@ As Partes 1–3 rodam em AWS real **ou** LocalStack; as Partes 4–5 (cold start
 | U2-LAB02 | Python 3.12 · AWS SAM · Lambda · DynamoDB (event store + snapshots) · API Gateway · pytest |
 | U2-LAB03 | Python 3.12 · AWS SAM · Lambda · DynamoDB Streams · projeção (read-model) · TransactWriteItems · API Gateway · pytest |
 
-## Relação com a disciplina irmã
+## Ver também
 
-Esta disciplina usa **Python + AWS Lambda + SQS**. A disciplina **[Arquitetura Reativa e Event-Driven](https://github.com/aulas-marco/arquiteturas-reativas-event-driven)** cobre os mesmos padrões (fan-out, idempotência, DLQ) com **Java + Spring**.
-
-O padrão é o mesmo. A plataforma é diferente.
+Os mesmos padrões (fan-out, idempotência, DLQ, Event Sourcing, CQRS) implementados em **Java + Spring**: **[arquiteturas-reativas-event-driven](https://github.com/aulas-marco/arquiteturas-reativas-event-driven)**.
 
 ## Aviso sobre datas
 
