@@ -34,9 +34,9 @@ Leia na ordem. Cada peça se apoia na anterior.
 | **U1-LAB03** | [Idempotência com Lambda + DynamoDB](02-demos/u1-03.md) | ✅ Disponível |
 | **U1-LAB04** | [DLQ e resiliência com Lambda](02-demos/u1-04.md) | ✅ Disponível |
 
-## Objetivos de aprendizagem (Bloom)
+## Objetivos de aprendizagem
 
-A unidade opera nos verbos de compreensão aceitos pela FIC (auto-instrucional): **reconhecer, listar, descrever, diferenciar, identificar, explicar**. Ao final, você deve **descrever** o ciclo de vida do Lambda, **diferenciar** evento de comando e as fontes de gatilho, e **identificar** as magnitudes de cold start por runtime.
+Ao final desta unidade, você consegue **descrever** o ciclo de vida do Lambda, **diferenciar** evento de comando e as fontes de gatilho, e **identificar** as magnitudes de cold start por runtime.
 
 ---
 

@@ -91,7 +91,7 @@ Banco NoSQL gerenciado da AWS. Nesta unidade é o [event store](#event-store) (m
 <a id="dynamodb-streams"></a>
 ### DynamoDB Streams
 
-Fluxo de mudanças da tabela (INSERT/MODIFY/REMOVE) que dispara um Lambda. Na Unidade 2 é o gatilho da [projeção](#projecao) — cada evento anexado ao store alimenta o modelo de leitura, substituindo o Kafka da disciplina reativa. Entrega *at-least-once* (daí a projeção precisar ser idempotente). Tratado no U2-LAB03.
+Fluxo de mudanças da tabela (INSERT/MODIFY/REMOVE) que dispara um Lambda. Na Unidade 2 é o gatilho da [projeção](#projecao) — cada evento anexado ao store alimenta o modelo de leitura. Entrega *at-least-once* (daí a projeção precisar ser idempotente). Tratado no U2-LAB03.
 
 ---
 

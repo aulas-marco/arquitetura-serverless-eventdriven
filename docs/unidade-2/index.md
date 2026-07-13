@@ -26,17 +26,17 @@ Leia na ordem. Cada peça se apoia na anterior.
 | **U2-LAB02** | [Replay e snapshots](02-demos/u2-02.md) | ✅ Disponível |
 | **U2-LAB03** | [CQRS e projeção (DynamoDB Streams)](02-demos/u2-03.md) | ✅ Disponível |
 
-## Objetivos de aprendizagem (Bloom)
+## Objetivos de aprendizagem
 
-A unidade opera nos verbos de compreensão da FIC: **reconhecer, listar, descrever, diferenciar, identificar, explicar**. Ao final, você deve **descrever** Event Sourcing e o replay, **diferenciar** o lado de escrita (comando) do de leitura (consulta) no CQRS, e **explicar** a concorrência otimística e a consistência eventual entre event store e projeção.
+Ao final desta unidade, você consegue **descrever** Event Sourcing e o replay, **diferenciar** o lado de escrita (comando) do de leitura (consulta) no CQRS, e **explicar** a concorrência otimística e a consistência eventual entre event store e projeção.
 
 ## Relação com a Unidade 1
 
 A Unidade 1 tratou o Lambda como função e os padrões de mensageria (fan-out, idempotência, DLQ). A Unidade 2 sobe uma camada: como **modelar o estado** de um agregado com eventos e como escalar a leitura separando-a da escrita.
 
-## Relação com a disciplina irmã
+## Ver também
 
-Mesmo domínio (conta bancária, mesmos eventos) da **[Arquitetura Reativa e Event-Driven](https://github.com/aulas-marco/arquiteturas-reativas-event-driven)** (Java + Spring + Postgres + Kafka). O padrão é o mesmo; a plataforma é serverless.
+Os mesmos padrões (Event Sourcing, CQRS, conta bancária) implementados em Java + Spring + Kafka: **[arquiteturas-reativas-event-driven](https://github.com/aulas-marco/arquiteturas-reativas-event-driven)**.
 
 ---
 

@@ -21,7 +21,7 @@ A projeção é **derivada e descartável**: pode ser apagada e reconstruída a 
 
 ## O elo assíncrono: DynamoDB Streams
 
-Como a projeção fica sabendo dos eventos novos? Por [DynamoDB Streams](../glossario.md#dynamodb-streams): cada gravação no event store emite um registro de stream que dispara o Lambda de projeção. É o equivalente serverless do tópico Kafka da disciplina reativa — o produtor (escrita) não chama o projetor; publica o evento, e o stream entrega.
+Como a projeção fica sabendo dos eventos novos? Por [DynamoDB Streams](../glossario.md#dynamodb-streams): cada gravação no event store emite um registro de stream que dispara o Lambda de projeção. É o equivalente serverless de um tópico Kafka — o produtor (escrita) não chama o projetor; publica o evento, e o stream entrega.
 
 ```
 comando → grava evento → [DynamoDB Stream] → Lambda de projeção → tabela saldos

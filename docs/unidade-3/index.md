@@ -26,9 +26,9 @@ Leia na ordem. Cada peça se apoia na anterior.
 | **U3-LAB02** | [Consumidores Kinesis e at-least-once](02-demos/u3-02.md) | ✅ Disponível |
 | **U3-LAB03** | [Classificador IA + cache DynamoDB](02-demos/u3-03.md) | ✅ Disponível |
 
-## Objetivos de aprendizagem (Bloom)
+## Objetivos de aprendizagem
 
-A unidade opera nos verbos: **reconhecer, listar, descrever, diferenciar, identificar, explicar**. Ao final, você deve **descrever** a anatomia de um Kinesis Data Stream (shard, PartitionKey, sequenceNumber), **diferenciar** múltiplos consumidores (fan-out completo) de ParallelizationFactor (paralelismo interno por shard), **explicar** at-least-once e BisectBatchOnFunctionError, e **identificar** quando o cache DynamoDB elimina chamadas desnecessárias a um LLM.
+Ao final desta unidade, você consegue **descrever** a anatomia de um Kinesis Data Stream (shard, PartitionKey, sequenceNumber), **diferenciar** múltiplos consumidores (fan-out completo) de ParallelizationFactor (paralelismo interno por shard), **explicar** at-least-once e BisectBatchOnFunctionError, e **identificar** quando o cache DynamoDB elimina chamadas desnecessárias a um LLM.
 
 ## Relação com a Unidade 2
 
