@@ -28,6 +28,23 @@ def projetar(linha_atual, evento):
     if linha_atual is not None and seq <= int(linha_atual["ultimaSequencia"]):
         return linha_atual  # já projetado — não reaplica
 
+    # `ContaCriada` é o único evento que CRIA a linha de leitura — a projeção o
+    # trata como um INSERT (não existe linha anterior). Os demais eventos
+    # ATUALIZAM uma linha que já existe. Distinguir os dois é a pergunta Q2 do
+    # fórum: por que o evento de criação é especial? Porque só ele inicializa o
+    # modelo de leitura; depósito e saque pressupõem uma conta já projetada.
+    if evento["tipo"] == "ContaCriada":
+        estado = ContaBancaria.inicial(contaId).aplicar(evento)
+        return {
+            "contaId": contaId,
+            "titular": estado.titular,
+            "saldo": estado.saldo,
+            "ultimaSequencia": seq,
+        }
+
+    # Evento de atualização: parte da linha existente. Se ela não existe (um
+    # evento de atualização chegou antes da criação — anomalia num stream
+    # ordenado), reconstrói do estado inicial por segurança.
     if linha_atual is None:
         estado = ContaBancaria.inicial(contaId)
     else:

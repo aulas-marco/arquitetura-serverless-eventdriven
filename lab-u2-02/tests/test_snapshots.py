@@ -66,3 +66,13 @@ def test_delta_vazio_devolve_o_proprio_snapshot():
     """Sem eventos novos desde o snapshot, o estado é o do snapshot."""
     base = ContaBancaria("c-1", "Ana", Decimal(500))
     assert reconstruir_a_partir_de(base, []) == base
+
+
+def test_replay_e_idempotente():
+    """Replay é função pura da história: reprocessar a MESMA lista de eventos
+    quantas vezes for dá sempre o mesmo estado. É o que garante que a consulta
+    não depende de quantas vezes o agregado foi reconstruído."""
+    primeiro = reconstruir("c-1", EVENTOS)
+    segundo = reconstruir("c-1", EVENTOS)
+    assert primeiro == segundo
+    assert primeiro.saldo == Decimal(200)

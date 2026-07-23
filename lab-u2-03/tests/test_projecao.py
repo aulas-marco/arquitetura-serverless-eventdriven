@@ -17,6 +17,16 @@ def test_primeiro_evento_cria_a_linha():
     assert linha["ultimaSequencia"] == 1
 
 
+def test_conta_criada_insere_linha_demais_eventos_atualizam():
+    """A distinção da Q2 do fórum: ContaCriada é o INSERT que inicializa a linha
+    de leitura (saldo zero); os eventos seguintes ATUALIZAM a linha existente."""
+    criada = projetar(None, {"tipo": "ContaCriada", "contaId": "c-1", "titular": "Ana", "sequencia": 1})
+    atualizada = projetar(criada, {"tipo": "DepositoRealizado", "contaId": "c-1", "valor": 100, "sequencia": 2})
+    assert criada["saldo"] == Decimal(0)       # INSERT: linha nova, saldo zero
+    assert atualizada["saldo"] == Decimal(100)  # UPDATE: soma sobre a linha existente
+    assert atualizada["titular"] == "Ana"       # preserva o titular vindo da criação
+
+
 def test_projecao_incremental_soma_saldo():
     linha = projetar(None, {"tipo": "ContaCriada", "contaId": "c-1", "titular": "Maria", "sequencia": 1})
     linha = projetar(linha, {"tipo": "DepositoRealizado", "contaId": "c-1", "valor": 100, "sequencia": 2})
