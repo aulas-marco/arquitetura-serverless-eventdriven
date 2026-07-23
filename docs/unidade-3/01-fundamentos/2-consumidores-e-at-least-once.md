@@ -49,4 +49,14 @@ O [U3-LAB02](../02-demos/u3-02.md) instancia os dois padrões. ConsumidorA usa `
 
 ---
 
-⬅️ [Streaming e Kinesis](1-streaming-e-kinesis.md) · 📑 [Índice](../index.md) · [IA generativa e cache ➡️](3-ia-generativa-e-cache.md)
+## Aprofundamento
+
+As páginas a seguir detalham cada mecanismo do consumidor com análise linha a linha do código:
+
+4. [Consumidores via Lambda ESM](kinesis-e-ia/4-consumidores-esm.md) — o Event Source Mapping, o checkpoint por shard e o fan-out por múltiplos ESMs.
+5. [ParallelizationFactor e paralelismo](kinesis-e-ia/5-parallelization-factor.md) — paralelismo interno por shard vs fan-out entre consumidores.
+6. [At-least-once e BisectBatchOnFunctionError](kinesis-e-ia/6-at-least-once-bisect.md) — a semântica de entrega, o bisect e a idempotência como contramedida.
+
+---
+
+⬅️ [Anterior: Streaming e Kinesis](1-streaming-e-kinesis.md) · 📑 [Índice](../index.md) · [Próximo: IA generativa e cache](3-ia-generativa-e-cache.md) ➡️

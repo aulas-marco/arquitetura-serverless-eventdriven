@@ -49,3 +49,7 @@ Uma segunda tabela [DynamoDB](../glossario.md#dynamodb) (`snapshots`, PK=`contaI
 ---
 
 ⬅️ [Event Sourcing](1-event-sourcing.md) · [Demo: U2-LAB02](../02-demos/u2-02.md) · [CQRS e projeção ➡️](3-cqrs-e-projecao.md)
+
+---
+
+⬅️ [Anterior: Event Sourcing](1-event-sourcing.md) · 📑 [Índice](../index.md) · [Próximo: CQRS e projeção](3-cqrs-e-projecao.md) ➡️

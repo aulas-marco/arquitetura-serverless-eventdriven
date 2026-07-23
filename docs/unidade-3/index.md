@@ -11,6 +11,8 @@ Leia na ordem. Cada peça se apoia na anterior.
 | 1 | [Streaming e Kinesis](01-fundamentos/1-streaming-e-kinesis.md) | Shard, PartitionKey, sequenceNumber — a anatomia do stream |
 | 2 | [Consumidores e at-least-once](01-fundamentos/2-consumidores-e-at-least-once.md) | ESM, ParallelizationFactor, BisectBatchOnFunctionError |
 | 3 | [IA generativa e cache](01-fundamentos/3-ia-generativa-e-cache.md) | Lambda→Anthropic SDK→SQS; cache DynamoDB com TTL |
+| 4 | [Como ler o código](01-fundamentos/3-como-ler-o-codigo.md) | Mapa do repositório e padrões dos três laboratórios |
+| ★ | [Aprofundamento: Kinesis e IA](01-fundamentos/kinesis-e-ia/1-stream-e-shards.md) | 10 páginas atômicas — shards, ESM, at-least-once, IA e cache |
 | — | [**Demo: U3-LAB01**](02-demos/u3-01.md) | Produtor Kinesis com roteamento por clienteId |
 | — | [**Demo: U3-LAB02**](02-demos/u3-02.md) | Dois consumidores independentes e at-least-once |
 | — | [**Demo: U3-LAB03**](02-demos/u3-03.md) | Classificador IA com cache DynamoDB |

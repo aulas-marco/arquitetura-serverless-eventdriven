@@ -106,3 +106,7 @@ Reconstruir a [projeção](#projecao) do zero, reprocessando o [event store](#ev
 ### Transação (TransactWriteItems)
 
 Operação do DynamoDB que grava vários itens de forma atômica — ou todos, ou nenhum —, cada um podendo ter sua própria condição. No U2-LAB03, a transferência grava o `SaqueRealizado` de uma conta e o `DepositoRealizado` da outra numa transação só: impossível o dinheiro sair de uma e não chegar na outra.
+
+---
+
+⬅️ [Anterior: Exercícios](exercicios.md) · 📑 [Índice](index.md)

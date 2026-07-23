@@ -53,3 +53,7 @@ O [U1-LAB04](../02-demos/u1-04.md) implanta fila principal com *redrive* para um
 ---
 
 ⬅️ [Idempotência e entrega](6-idempotencia-e-entrega.md) · [Demo: U1-LAB04 ➡️](../02-demos/u1-04.md)
+
+---
+
+⬅️ [Anterior: Idempotência e entrega](6-idempotencia-e-entrega.md) · 📑 [Índice](../index.md) · [Próximo: Como ler o código](8-como-ler-o-codigo.md) ➡️

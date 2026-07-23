@@ -95,3 +95,7 @@ flowchart TD
     ROT -->|alta| QA[fila alta-prioridade]
     ROT -->|baixa| QB[fila baixa-prioridade]
 ```
+
+---
+
+📑 [Índice](../index.md) · [Próximo: Exercícios](../exercicios.md) ➡️

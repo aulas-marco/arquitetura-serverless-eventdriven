@@ -47,4 +47,14 @@ O [U3-LAB01](../02-demos/u3-01.md) cria um stream de 4 shards e publica eventos 
 
 ---
 
-📑 [Índice](../index.md) · [Demo: U3-LAB01](../02-demos/u3-01.md) · [Consumidores e at-least-once ➡️](2-consumidores-e-at-least-once.md)
+## Aprofundamento
+
+As páginas a seguir detalham cada mecanismo com análise linha a linha do código dos labs:
+
+1. [Stream e shards](kinesis-e-ia/1-stream-e-shards.md) — a anatomia do stream: capacidade, ordenação e retenção por shard.
+2. [Roteamento por PartitionKey e ordenação por shard](kinesis-e-ia/2-particao-por-chave.md) — `hash(PartitionKey) % shards` e a garantia de ordem por cliente.
+3. [Ponte Kafka → Kinesis](kinesis-e-ia/3-ponte-kafka-kinesis.md) — o mapa de equivalência entre os dois mundos.
+
+---
+
+⬅️ [Anterior: Setup local](../00-comece-aqui/setup-local.md) · 📑 [Índice](../index.md) · [Próximo: Consumidores e at-least-once](2-consumidores-e-at-least-once.md) ➡️

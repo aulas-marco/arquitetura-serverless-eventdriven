@@ -11,6 +11,8 @@ Leia na ordem. Cada peça se apoia na anterior.
 | 1 | [Event Sourcing](01-fundamentos/1-event-sourcing.md) | Gravar fatos, não estado; replay; concorrência otimística |
 | 2 | [Replay e snapshots](01-fundamentos/2-replay-e-snapshots.md) | Reconstruir e acelerar com snapshots |
 | 3 | [CQRS e projeção](01-fundamentos/3-cqrs-e-projecao.md) | Separar leitura de escrita; projeção via Streams; rebuild |
+| 4 | [Como ler o código](01-fundamentos/3-como-ler-o-codigo.md) | Mapa do repositório e padrões dos três laboratórios |
+| ★ | [Aprofundamento: Event Sourcing e CQRS](01-fundamentos/event-sourcing-cqrs/1-por-que-event-sourcing.md) | 7 páginas atômicas — do problema do CRUD ao ES+CQRS combinados |
 | — | [**Demo: U2-LAB01**](02-demos/u2-01.md) | Event store append-only no DynamoDB |
 | — | [**Demo: U2-LAB02**](02-demos/u2-02.md) | Replay acelerado por snapshots |
 | — | [**Demo: U2-LAB03**](02-demos/u2-03.md) | CQRS e projeção via DynamoDB Streams |

@@ -109,4 +109,15 @@ O [U3-LAB03](../02-demos/u3-03.md) mostra o contraste: na primeira rodada, 10 ti
 
 ---
 
-⬅️ [Consumidores e at-least-once](2-consumidores-e-at-least-once.md) · 📑 [Índice](../index.md) · [Demo: U3-LAB03](../02-demos/u3-03.md)
+## Aprofundamento
+
+As páginas a seguir detalham a camada de IA do lab e os padrões que a tornam econômica:
+
+7. [IA — casos de uso](kinesis-e-ia/7-ia-casos-de-uso.md) — os cinco casos canônicos de IA em sistemas orientados a eventos e o espectro regras/ML/LLM.
+8. [IA — padrões econômicos](kinesis-e-ia/8-ia-padroes-economicos.md) — cache, modelos pequenos, heurísticas pré-LLM e JSON estrito.
+9. [Classificação com LLM + cache DynamoDB](kinesis-e-ia/9-classificacao-cache-dynamodb.md) — o pipeline `cache → API → parse → salva → roteia`, linha a linha.
+10. [Referência rápida](kinesis-e-ia/referencia.md) — tabela de termos, operações e onde aparecem no código.
+
+---
+
+⬅️ [Anterior: Consumidores e at-least-once](2-consumidores-e-at-least-once.md) · 📑 [Índice](../index.md) · [Próximo: Como ler o código](3-como-ler-o-codigo.md) ➡️

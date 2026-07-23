@@ -49,3 +49,7 @@ O snapshot fotografa o estado gerado na Init. Aleatoriedade, conexões abertas e
 ---
 
 ⬅️ [Eventos e gatilhos](3-eventos-e-gatilhos.md) · [Mensageria e fan-out ➡️](5-mensageria-e-fanout.md)
+
+---
+
+⬅️ [Anterior: Eventos e gatilhos](3-eventos-e-gatilhos.md) · 📑 [Índice](../index.md) · [Próximo: Mensageria e fan-out](5-mensageria-e-fanout.md) ➡️

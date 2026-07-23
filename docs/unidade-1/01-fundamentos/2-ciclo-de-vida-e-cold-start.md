@@ -45,3 +45,7 @@ A teoria diz que a Init "não é faturada". Mas na medição real, a 1ª invoca�
 ---
 
 ⬅️ [Serverless e FaaS](1-serverless-e-faas.md) · [Eventos e gatilhos ➡️](3-eventos-e-gatilhos.md)
+
+---
+
+⬅️ [Anterior: Serverless e o modelo FaaS](1-serverless-e-faas.md) · 📑 [Índice](../index.md) · [Próximo: Eventos e gatilhos](3-eventos-e-gatilhos.md) ➡️

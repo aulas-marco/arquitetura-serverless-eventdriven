@@ -120,3 +120,7 @@ Situação em que o item não está no cache — o texto ainda não foi classifi
 ### SemClassificacao
 
 Exceção Python definida em `suporte.py`, lançada por `parsear_resposta` quando o LLM retorna JSON inválido ou com valores fora do domínio (`prioridade` ≠ alta/baixa, `categoria` ≠ tecnico/comercial). O `lambda_handler` captura a exceção e roteia o ticket para a fila `u3lab03-sem-classificacao` — preservando o registro para inspeção manual em vez de descartá-lo ou bloquear o processamento.
+
+---
+
+⬅️ [Anterior: Exercícios](exercicios.md) · 📑 [Índice](index.md)

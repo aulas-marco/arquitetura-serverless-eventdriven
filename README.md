@@ -71,6 +71,14 @@ Cada laboratório é uma pasta autocontida (`lab-uNvV-slug/`) com seu próprio t
 | [`lab-u3-02`](lab-u3-02/) | 3 | Consumidores Kinesis (ESM, at-least-once) | Python + SAM · Kinesis | ✅ |
 | [`lab-u3-03`](lab-u3-03/) | 3 | Classificador IA + cache | Python + SAM · SQS · DynamoDB · Anthropic | ✅ |
 
+## Documentação
+
+Cada unidade tem um portal com trilha ordenada — *comece aqui* → fundamentos → aprofundamento (páginas atômicas) → laboratórios → arquitetura → exercícios → glossário, com rodapé de navegação em cada página:
+
+- [**Unidade 1** — Fundamentos: Serverless, eventos e mensageria](docs/unidade-1/index.md)
+- [**Unidade 2** — Event Sourcing e CQRS](docs/unidade-2/index.md)
+- [**Unidade 3** — Streaming (Kinesis), consumidores e IA](docs/unidade-3/index.md)
+
 ## Pré-requisitos
 
 Confirme as versões na data em que rodar — mudam com frequência.

@@ -17,6 +17,8 @@ Leia na ordem. Cada peça se apoia na anterior.
 | 5 | [Mensageria e fan-out](01-fundamentos/5-mensageria-e-fanout.md) | SNS vs SQS; por que se combinam; o duplo envelope |
 | 6 | [Idempotência e entrega at-least-once](01-fundamentos/6-idempotencia-e-entrega.md) | Por que a duplicata acontece; conditional write; TTL |
 | 7 | [DLQ e resiliência](01-fundamentos/7-dlq-e-resiliencia.md) | Mensagem veneno; maxReceiveCount; falha parcial de lote |
+| 8 | [Como ler o código](01-fundamentos/8-como-ler-o-codigo.md) | Mapa do repositório: onde cada arquivo mora e os padrões recorrentes |
+| ★ | [Aprofundamento: Serverless e mensageria](01-fundamentos/serverless-e-mensageria/1-modelo-faas.md) | 12 páginas atômicas — FaaS, ciclo de vida, gatilhos, fan-out, idempotência, DLQ |
 | — | [**Demo: U1-LAB01**](02-demos/u1-01.md) | Fundamentos do Lambda, em 5 partes |
 | — | [**Demo: U1-LAB02**](02-demos/u1-02.md) | Fan-out com SNS + SQS |
 | — | [**Demo: U1-LAB03**](02-demos/u1-03.md) | Idempotência com Lambda + DynamoDB |
