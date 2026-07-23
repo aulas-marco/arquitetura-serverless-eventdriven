@@ -19,28 +19,49 @@ STACK_PROD="u3lab01-produtor"
 FUNC_A="u3lab02-consumidor-a"
 FUNC_B="u3lab02-consumidor-b"
 
+# Modo de execução: LOCALSTACK=1 usa awslocal apontando para o LocalStack.
+LOCALSTACK="${LOCALSTACK:-0}"
+if [ "$LOCALSTACK" = "1" ]; then AWS="awslocal"; else AWS="aws"; fi
+
 _ts_ms() { python3 -c "import time; print(int((time.time() - $1) * 1000))"; }
 
-URL="$(aws cloudformation describe-stacks --stack-name "$STACK_PROD" --region "$REGION" \
-  --query "Stacks[0].Outputs[?OutputKey=='UrlHttpApi'].OutputValue" --output text)"
+# publicar_lote — em modo AWS faz o POST no HttpApi; em modo LocalStack (HttpApi
+# é Pro) invoca o produtor Kinesis direto com a lista como payload. Devolve o
+# mesmo `body` do curl.
+publicar_lote() {
+  local corpo="$1"
+  if [ "$LOCALSTACK" = "1" ]; then
+    "$AWS" lambda invoke --function-name u3lab01-produtor \
+      --cli-binary-format raw-in-base64-out --payload "$corpo" \
+      /tmp/u3lab02-resp.json >/dev/null
+    python3 -c 'import json; print(json.load(open("/tmp/u3lab02-resp.json")).get("body",""))'
+  else
+    curl -s -X POST "$URL" -H 'Content-Type: application/json' -d "$corpo"
+  fi
+}
+
+if [ "$LOCALSTACK" != "1" ]; then
+  URL="$(aws cloudformation describe-stacks --stack-name "$STACK_PROD" --region "$REGION" \
+    --query "Stacks[0].Outputs[?OutputKey=='UrlHttpApi'].OutputValue" --output text)"
+fi
 
 # --------------------------------------------------------------------------
 echo "== Parte 1: dois consumidores independentes recebem todos os eventos =="
 echo "   Publicando 5 eventos (cli-001, cli-002, cli-003)..."
-curl -s -X POST "$URL" -H 'Content-Type: application/json' -d '[
+publicar_lote '[
   {"clienteId":"cli-001","mensagem":"nao consigo logar"},
   {"clienteId":"cli-002","mensagem":"cobranca errada"},
   {"clienteId":"cli-001","mensagem":"segue o print"},
   {"clienteId":"cli-003","mensagem":"elogio ao suporte"},
   {"clienteId":"cli-002","mensagem":"aguardo retorno"}
-]' | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'   {len(d[\"publicados\"])} evento(s) publicados')"
+]' | python3 -c "import sys,json; d=json.load(sys.stdin); print('   '+str(len(d['publicados']))+' evento(s) publicados')"
 
 echo "   Aguardando processamento (25s)..."
 sleep 25
 
 echo ""
 echo "   Logs do CONSUMIDOR-A (ParallelizationFactor=4):"
-aws logs filter-log-events \
+"$AWS" logs filter-log-events \
   --log-group-name "/aws/lambda/$FUNC_A" \
   --start-time "$(_ts_ms 35)" \
   --filter-pattern "CONSUMIDOR" --region "$REGION" \
@@ -49,7 +70,7 @@ aws logs filter-log-events \
 
 echo ""
 echo "   Logs do CONSUMIDOR-B (sem paralelização adicional):"
-aws logs filter-log-events \
+"$AWS" logs filter-log-events \
   --log-group-name "/aws/lambda/$FUNC_B" \
   --start-time "$(_ts_ms 35)" \
   --filter-pattern "CONSUMIDOR" --region "$REGION" \
@@ -65,14 +86,14 @@ echo "   ConsumidorB processa um shard por vez."
 echo ""
 echo "== Parte 2: at-least-once — BisectBatchOnFunctionError em ação =="
 echo "   Configurando FALHAR_EM=cli-002 no consumidor-a..."
-aws lambda update-function-configuration \
+"$AWS" lambda update-function-configuration \
   --function-name "$FUNC_A" \
   --environment "Variables={CONSUMIDOR=consumidor-a,FALHAR_EM=cli-002}" \
   --region "$REGION" > /dev/null
-aws lambda wait function-updated --function-name "$FUNC_A" --region "$REGION"
+"$AWS" lambda wait function-updated --function-name "$FUNC_A" --region "$REGION"
 
 echo "   Publicando 4 eventos (cli-001 e cli-002 misturados)..."
-curl -s -X POST "$URL" -H 'Content-Type: application/json' -d '[
+publicar_lote '[
   {"clienteId":"cli-001","mensagem":"ok 1"},
   {"clienteId":"cli-002","mensagem":"vai falhar"},
   {"clienteId":"cli-001","mensagem":"ok 2"},
@@ -84,7 +105,7 @@ sleep 45
 
 echo ""
 echo "   Logs do CONSUMIDOR-A (observe bisect e retentativas para cli-002):"
-aws logs filter-log-events \
+"$AWS" logs filter-log-events \
   --log-group-name "/aws/lambda/$FUNC_A" \
   --start-time "$(_ts_ms 55)" \
   --region "$REGION" \
@@ -93,7 +114,7 @@ aws logs filter-log-events \
 
 echo ""
 echo "   Restaurando configuração original do consumidor-a..."
-aws lambda update-function-configuration \
+"$AWS" lambda update-function-configuration \
   --function-name "$FUNC_A" \
   --environment "Variables={CONSUMIDOR=consumidor-a}" \
   --region "$REGION" > /dev/null

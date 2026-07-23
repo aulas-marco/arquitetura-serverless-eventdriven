@@ -16,8 +16,17 @@ set -euo pipefail
 REGION="${AWS_DEFAULT_REGION:-us-east-1}"
 STACK="u3lab03-classificador"
 
+# Modo de execução: LOCALSTACK=1 usa awslocal apontando para o LocalStack.
+# NOTA: o modo LocalStack cobre a INFRA deste lab (filas SQS, roteamento,
+# tabela de cache DynamoDB), mas a chamada ao LLM continua sendo REAL — o
+# classificador chama a API Anthropic (Claude Haiku) e exige ANTHROPIC_API_KEY.
+# Por isso o entrypoint é o mesmo em ambos os modos (SQS, não HttpApi); só o
+# binário AWS muda. Não há caminho totalmente offline para este lab.
+LOCALSTACK="${LOCALSTACK:-0}"
+if [ "$LOCALSTACK" = "1" ]; then AWS="awslocal"; else AWS="aws"; fi
+
 _output() {
-  aws cloudformation describe-stacks --stack-name "$STACK" --region "$REGION" \
+  "$AWS" cloudformation describe-stacks --stack-name "$STACK" --region "$REGION" \
     --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text
 }
 
@@ -40,7 +49,7 @@ TICKETS=(
 )
 
 _contar() {
-  aws sqs get-queue-attributes --queue-url "$1" \
+  "$AWS" sqs get-queue-attributes --queue-url "$1" \
     --attribute-names ApproximateNumberOfMessages \
     --region "$REGION" \
     --query 'Attributes.ApproximateNumberOfMessages' \
@@ -49,14 +58,14 @@ _contar() {
 
 _limpar_filas() {
   for url in "$FILA_ALTA" "$FILA_BAIXA" "$FILA_SEM"; do
-    aws sqs purge-queue --queue-url "$url" --region "$REGION" 2>/dev/null || true
+    "$AWS" sqs purge-queue --queue-url "$url" --region "$REGION" 2>/dev/null || true
   done
   sleep 3
 }
 
 _enviar_tickets() {
   for t in "${TICKETS[@]}"; do
-    aws sqs send-message --queue-url "$FILA_IN" \
+    "$AWS" sqs send-message --queue-url "$FILA_IN" \
       --message-body "$t" --region "$REGION" > /dev/null
   done
 }
@@ -82,7 +91,7 @@ echo "   Fila sem-classificação:  $SEM mensagem(ns)"
 echo "   Total roteado: $TOTAL / ${#TICKETS[@]}"
 echo ""
 echo "   Logs (note 'api' — cada ticket chamou o Claude Haiku):"
-aws logs filter-log-events \
+"$AWS" logs filter-log-events \
   --log-group-name "/aws/lambda/u3lab03-classificador" \
   --start-time "$(_ts_ms 55)" \
   --filter-pattern "CLASSIFICADO" --region "$REGION" \
@@ -109,7 +118,7 @@ echo "   Fila sem-classificação:  $SEM mensagem(ns)"
 echo "   Total roteado: $TOTAL / ${#TICKETS[@]}"
 echo ""
 echo "   Logs (note 'cache' — nenhuma chamada à API Anthropic foi feita):"
-aws logs filter-log-events \
+"$AWS" logs filter-log-events \
   --log-group-name "/aws/lambda/u3lab03-classificador" \
   --start-time "$(_ts_ms 40)" \
   --filter-pattern "CLASSIFICADO" --region "$REGION" \

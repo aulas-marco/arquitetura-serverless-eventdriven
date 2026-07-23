@@ -21,10 +21,24 @@ AWS_REGION ?= us-east-1
 N          ?= 5
 export AWS_DEFAULT_REGION := $(AWS_REGION)
 
+# Modo de execução: LOCALSTACK=1 usa samlocal/awslocal apontando para o
+# LocalStack (http://localhost:4566); o padrão usa a AWS real.
+#   LOCALSTACK=1 make deploy-fanout      # implanta no LocalStack
+#   LOCALSTACK=1 make fanout             # roda a demo contra o LocalStack
+ifeq ($(LOCALSTACK),1)
+  SAM := samlocal
+  AWS := awslocal
+  export AWS_ENDPOINT_URL := http://localhost:4566
+  export LOCALSTACK := 1
+else
+  SAM := sam
+  AWS := aws
+endif
+
 # Ferramental: JDK 21 (keg-only no brew) e binários do Homebrew no PATH.
 JAVA_HOME ?= $(shell /opt/homebrew/bin/brew --prefix openjdk@21 2>/dev/null)/libexec/openjdk.jdk/Contents/Home
 export JAVA_HOME
-export PATH := /opt/homebrew/bin:/opt/homebrew/opt/openjdk@21/bin:$(PATH)
+export PATH := $(CURDIR)/.venv/bin:/opt/homebrew/bin:/opt/homebrew/opt/openjdk@21/bin:$(PATH)
 
 # venv local para o pytest (caminho absoluto: sobrevive aos `cd` das receitas).
 VENV   := $(CURDIR)/.venv
@@ -162,66 +176,66 @@ test-classificador: $(PYTEST)
 # Nuvem — exigem credenciais AWS (aws configure)
 # ==========================================================================
 build:
-	cd $(LAB)/fundamentos && sam build
-	cd $(LAB)/runtimes && sam build
-	cd $(LAB)/snapstart && sam build
+	cd $(LAB)/fundamentos && $(SAM) build
+	cd $(LAB)/runtimes && $(SAM) build
+	cd $(LAB)/snapstart && $(SAM) build
 
 deploy: deploy-fundamentos deploy-runtimes deploy-snapstart
 	@echo "✓ 3 stacks implantados"
 
 deploy-fundamentos:
-	cd $(LAB)/fundamentos && sam build && sam deploy --stack-name u1lab01-partes1a3 $(SAM_DEPLOY)
+	cd $(LAB)/fundamentos && $(SAM) build && $(SAM) deploy --stack-name u1lab01-partes1a3 $(SAM_DEPLOY)
 
 deploy-runtimes:
-	cd $(LAB)/runtimes && sam build && sam deploy --stack-name u1lab01-runtimes $(SAM_DEPLOY)
+	cd $(LAB)/runtimes && $(SAM) build && $(SAM) deploy --stack-name u1lab01-runtimes $(SAM_DEPLOY)
 
 deploy-snapstart:
-	cd $(LAB)/snapstart && sam build && sam deploy --stack-name u1lab01-snapstart $(SAM_DEPLOY)
+	cd $(LAB)/snapstart && $(SAM) build && $(SAM) deploy --stack-name u1lab01-snapstart $(SAM_DEPLOY)
 
 deploy-fanout:
-	cd $(LAB02) && sam build && sam deploy --stack-name u1lab02-fanout $(SAM_DEPLOY)
+	cd $(LAB02) && $(SAM) build && $(SAM) deploy --stack-name u1lab02-fanout $(SAM_DEPLOY)
 
 fanout:
 	cd $(LAB02)/scripts && bash publicar-e-observar.sh
 
 deploy-idem:
-	cd $(LAB03) && sam build && sam deploy --stack-name u1lab03-idempotencia $(SAM_DEPLOY)
+	cd $(LAB03) && $(SAM) build && $(SAM) deploy --stack-name u1lab03-idempotencia $(SAM_DEPLOY)
 
 idem:
 	cd $(LAB03)/scripts && bash enviar-duplicado-e-observar.sh
 
 deploy-dlq:
-	cd $(LAB04) && sam build && sam deploy --stack-name u1lab04-dlq $(SAM_DEPLOY)
+	cd $(LAB04) && $(SAM) build && $(SAM) deploy --stack-name u1lab04-dlq $(SAM_DEPLOY)
 
 dlq:
 	cd $(LAB04)/scripts && bash veneno-e-dlq.sh
 
 deploy-eventstore:
-	cd $(LABU201) && sam build && sam deploy --stack-name u2lab01-eventstore $(SAM_DEPLOY)
+	cd $(LABU201) && $(SAM) build && $(SAM) deploy --stack-name u2lab01-eventstore $(SAM_DEPLOY)
 
 eventstore:
 	cd $(LABU201)/scripts && bash conta-e-replay.sh
 
 deploy-snapshots:
-	cd $(LABU202) && sam build && sam deploy --stack-name u2lab02-snapshots $(SAM_DEPLOY)
+	cd $(LABU202) && $(SAM) build && $(SAM) deploy --stack-name u2lab02-snapshots $(SAM_DEPLOY)
 
 snapshots:
 	cd $(LABU202)/scripts && bash snapshot-e-delta.sh
 
 deploy-cqrs:
-	cd $(LABU203) && sam build && sam deploy --stack-name u2lab03-cqrs $(SAM_DEPLOY)
+	cd $(LABU203) && $(SAM) build && $(SAM) deploy --stack-name u2lab03-cqrs $(SAM_DEPLOY)
 
 cqrs:
 	cd $(LABU203)/scripts && bash cqrs-projecao.sh
 
 deploy-produtor:
-	cd $(LABU301) && sam build && sam deploy --stack-name u3lab01-produtor $(SAM_DEPLOY)
+	cd $(LABU301) && $(SAM) build && $(SAM) deploy --stack-name u3lab01-produtor $(SAM_DEPLOY)
 
 produtor:
 	cd $(LABU301)/scripts && bash publicar-e-rotear.sh
 
 deploy-consumidor:
-	cd $(LABU302) && sam build && sam deploy --stack-name u3lab02-consumidores $(SAM_DEPLOY)
+	cd $(LABU302) && $(SAM) build && $(SAM) deploy --stack-name u3lab02-consumidores $(SAM_DEPLOY)
 
 consumidor:
 	cd $(LABU302)/scripts && bash consumir-e-observar.sh
@@ -229,19 +243,19 @@ consumidor:
 deploy-classificador:
 	@test -n "$(ANTHROPIC_API_KEY)" || \
 	  { echo "Erro: exporte ANTHROPIC_API_KEY antes de 'make deploy-classificador'."; exit 1; }
-	cd $(LABU303) && sam build && sam deploy --stack-name u3lab03-classificador \
+	cd $(LABU303) && $(SAM) build && $(SAM) deploy --stack-name u3lab03-classificador \
 	  --parameter-overrides AnthropicApiKey=$(ANTHROPIC_API_KEY) $(SAM_DEPLOY)
 
 classificador:
 	cd $(LABU303)/scripts && bash classificar-e-rotear.sh
 
 invoke-alo:
-	@aws lambda invoke --function-name u1lab01-alo --log-type Tail \
+	@$(AWS) lambda invoke --function-name u1lab01-alo --log-type Tail \
 	  --query 'LogResult' --output text /dev/null | base64 --decode | grep -E 'Alô|REPORT'
 
 invoke-ciclo:
 	@for i in 1 2 3; do \
-	  aws lambda invoke --function-name u1lab01-ciclo-vida --log-type Tail \
+	  $(AWS) lambda invoke --function-name u1lab01-ciclo-vida --log-type Tail \
 	    --query 'LogResult' --output text /dev/null | base64 --decode | grep -E 'HANDLER|invocacoes'; \
 	  echo '---'; \
 	done
@@ -258,24 +272,24 @@ snapstart:
 outputs:
 	@for s in u1lab01-partes1a3 u1lab01-runtimes u1lab01-snapstart u1lab02-fanout u1lab03-idempotencia u1lab04-dlq u2lab01-eventstore u2lab02-snapshots u2lab03-cqrs u3lab01-produtor u3lab02-consumidores u3lab03-classificador; do \
 	  echo "== $$s =="; \
-	  aws cloudformation describe-stacks --stack-name $$s \
+	  $(AWS) cloudformation describe-stacks --stack-name $$s \
 	    --query 'Stacks[0].Outputs[].{Chave:OutputKey,Valor:OutputValue}' \
 	    --output table 2>/dev/null || echo "  (stack não implantado)"; \
 	done
 
 clean:
-	-aws cloudformation delete-stack --stack-name u1lab01-partes1a3
-	-aws cloudformation delete-stack --stack-name u1lab01-runtimes
-	-aws cloudformation delete-stack --stack-name u1lab01-snapstart
-	-aws cloudformation delete-stack --stack-name u1lab02-fanout
-	-aws cloudformation delete-stack --stack-name u1lab03-idempotencia
-	-aws cloudformation delete-stack --stack-name u1lab04-dlq
-	-aws cloudformation delete-stack --stack-name u2lab01-eventstore
-	-aws cloudformation delete-stack --stack-name u2lab02-snapshots
-	-aws cloudformation delete-stack --stack-name u2lab03-cqrs
-	-aws cloudformation delete-stack --stack-name u3lab01-produtor
-	-aws cloudformation delete-stack --stack-name u3lab02-consumidores
-	-aws cloudformation delete-stack --stack-name u3lab03-classificador
+	-$(AWS) cloudformation delete-stack --stack-name u1lab01-partes1a3
+	-$(AWS) cloudformation delete-stack --stack-name u1lab01-runtimes
+	-$(AWS) cloudformation delete-stack --stack-name u1lab01-snapstart
+	-$(AWS) cloudformation delete-stack --stack-name u1lab02-fanout
+	-$(AWS) cloudformation delete-stack --stack-name u1lab03-idempotencia
+	-$(AWS) cloudformation delete-stack --stack-name u1lab04-dlq
+	-$(AWS) cloudformation delete-stack --stack-name u2lab01-eventstore
+	-$(AWS) cloudformation delete-stack --stack-name u2lab02-snapshots
+	-$(AWS) cloudformation delete-stack --stack-name u2lab03-cqrs
+	-$(AWS) cloudformation delete-stack --stack-name u3lab01-produtor
+	-$(AWS) cloudformation delete-stack --stack-name u3lab02-consumidores
+	-$(AWS) cloudformation delete-stack --stack-name u3lab03-classificador
 	-cd $(LAB)/runtimes/java && mvn -q clean --no-transfer-progress
 	-cd $(LAB)/snapstart/java && mvn -q clean --no-transfer-progress
 	rm -rf $(LAB)/fundamentos/.aws-sam $(LAB)/runtimes/.aws-sam $(LAB)/snapstart/.aws-sam
@@ -285,11 +299,17 @@ clean:
 # ==========================================================================
 # LocalStack — opcional, para as Partes 1-3 sem conta AWS
 # ==========================================================================
+# Socket do Docker que o LocalStack usa para rodar as Lambdas. Docker Desktop:
+# /var/run/docker.sock (padrão). Colima: $HOME/.colima/default/docker.sock —
+# passe DOCKER_SOCK=... ou exporte a variável.
+DOCKER_SOCK ?= /var/run/docker.sock
+
 up:
 	docker run -d -p 4566:4566 \
-	  -e SERVICES=lambda,sns,sqs,s3,iam,apigateway,events,logs \
-	  --name localstack localstack/localstack
-	@echo "LocalStack em http://localhost:4566 (use awslocal/samlocal)"
+	  -v $(DOCKER_SOCK):/var/run/docker.sock \
+	  --name localstack localstack/localstack:3
+	@echo "LocalStack em http://localhost:4566 — deploy com 'LOCALSTACK=1 make deploy-*'"
+	@echo "(serviços carregam sob demanda; requer awslocal + aws-sam-cli-local)"
 
 down:
 	-docker rm -f localstack
