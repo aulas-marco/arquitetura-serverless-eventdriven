@@ -22,6 +22,10 @@ saida() {
     --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text
 }
 
+titulo() { printf '\n▶ %s\n' "$1"; }
+nota()   { printf '  %s\n' "$1"; }
+linha()  { printf '%s\n' '───────────────────────────────────────────────────────────────────'; }
+
 # publicar_pedido — em modo AWS faz o POST no HttpApi (curl); em modo LocalStack
 # (HttpApi é Pro, indisponível no Community) invoca a Lambda produtora direto com
 # o pedido como payload e devolve o mesmo `body` que o curl devolveria.
@@ -37,23 +41,36 @@ publicar_pedido() {
   fi
 }
 
+linha
+echo " U1-LAB02 — Fan-out: uma publicação, dois consumidores independentes"
+linha
+echo "Vamos publicar 1 pedido no tópico SNS. Duas filas SQS estão inscritas"
+echo "nele, cada uma alimentando sua própria Lambda. Se as DUAS reagirem ao"
+echo "MESMO pedido, é a prova de que o fan-out entrega uma cópia do evento"
+echo "para cada assinante, de forma independente."
+
 if [ "$LOCALSTACK" != "1" ]; then URL="$(saida UrlHttpApi)"; fi
 PEDIDO="p-$(date +%s)"
+INICIO="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-echo "== publicando 1 pedido ($PEDIDO) no tópico =="
-publicar_pedido "{\"pedidoId\":\"$PEDIDO\",\"valor\":250,\"itens\":[\"livro\",\"caneta\"]}"
-echo
+titulo "Publicando o pedido $PEDIDO no tópico"
+RESPOSTA="$(publicar_pedido "{\"pedidoId\":\"$PEDIDO\",\"valor\":250,\"itens\":[\"livro\",\"caneta\"]}")"
+nota "Resposta da publicação: $RESPOSTA"
 
-echo "== aguardando o fan-out e o processamento assíncrono =="
+titulo "Aguardando o fan-out e o processamento assíncrono…"
 sleep 12
+nota "concluído."
 
-echo "== [ESTOQUE] reagiu? =="
-"$AWS" logs tail /aws/lambda/u1lab02-consumidor-estoque --since 3m --region "$REGION" --format short \
+titulo "O consumidor de ESTOQUE reagiu?"
+"$AWS" logs tail /aws/lambda/u1lab02-consumidor-estoque --since "$INICIO" --region "$REGION" --format short \
   | grep -E '\[ESTOQUE\]' | grep "$PEDIDO" || echo "  (nada ainda — rode de novo em alguns segundos)"
 
-echo "== [NOTIFICACAO] reagiu? =="
-"$AWS" logs tail /aws/lambda/u1lab02-consumidor-notificacao --since 3m --region "$REGION" --format short \
+titulo "O consumidor de NOTIFICAÇÃO reagiu?"
+"$AWS" logs tail /aws/lambda/u1lab02-consumidor-notificacao --since "$INICIO" --region "$REGION" --format short \
   | grep -E '\[NOTIFICACAO\]' | grep "$PEDIDO" || echo "  (nada ainda — rode de novo em alguns segundos)"
 
-echo
-echo "Uma publicação → dois consumidores independentes. Isso é fan-out."
+linha
+echo " Uma publicação → dois consumidores independentes, cada um com sua"
+echo " própria fila. Isso é fan-out: o produtor não sabe (nem precisa saber)"
+echo " quantos assinantes existem."
+linha

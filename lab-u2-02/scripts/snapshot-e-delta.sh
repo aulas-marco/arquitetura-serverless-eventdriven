@@ -16,6 +16,10 @@ STACK="u2lab02-snapshots"
 LOCALSTACK="${LOCALSTACK:-0}"
 if [ "$LOCALSTACK" = "1" ]; then AWS="awslocal"; else AWS="aws"; fi
 
+titulo() { printf '\n▶ %s\n' "$1"; }
+nota()   { printf '  %s\n' "$1"; }
+linha()  { printf '%s\n' '───────────────────────────────────────────────────────────────────'; }
+
 FN="u2lab02-snapshots"
 
 # api — em modo AWS faz curl no HttpApi; em modo LocalStack (HttpApi é Pro)
@@ -51,30 +55,39 @@ if [ "$LOCALSTACK" != "1" ]; then
     --query "Stacks[0].Outputs[?OutputKey=='UrlHttpApi'].OutputValue" --output text)"
 fi
 
-echo "== criar conta e acumular 6 depósitos de 100 =="
+linha
+echo " U2-LAB02 — Snapshot: materializar o estado para reprocessar menos"
+linha
+echo "Replay completo funciona, mas fica caro com histórico longo. Um"
+echo "snapshot congela o estado numa sequência conhecida; a partir daí, a"
+echo "consulta só reprocessa o DELTA (eventos após o snapshot) e chega ao"
+echo "MESMO resultado que o replay completo — com muito menos leitura."
+
+titulo "Criando conta e acumulando 6 depósitos de 100"
 CONTA="$(api POST "/contas" "" '{"titular":"Maria"}' | python3 -c 'import sys,json; print(json.load(sys.stdin)["contaId"])')"
 for i in $(seq 1 6); do
   api POST "/contas/{contaId}/depositos" "$CONTA" '{"valor":100}' >/dev/null
 done
-echo "  contaId=$CONTA (7 eventos: 1 criação + 6 depósitos)"
+nota "contaId=$CONTA (7 eventos: 1 criação + 6 depósitos)"
 
-echo "== consulta ANTES do snapshot (reprocessa todos os eventos) =="
+titulo "Consulta ANTES do snapshot (reprocessa todos os eventos)"
 api GET "/contas/{contaId}" "$CONTA"; echo
 
-echo "== tirar snapshot do estado atual =="
+titulo "Tirando snapshot do estado atual"
 api POST "/contas/{contaId}/snapshot" "$CONTA"; echo
 
-echo "== mais 2 depósitos de 100 (viram o delta) =="
+titulo "Mais 2 depósitos de 100 (viram o delta)"
 api POST "/contas/{contaId}/depositos" "$CONTA" '{"valor":100}' >/dev/null
 api POST "/contas/{contaId}/depositos" "$CONTA" '{"valor":100}' >/dev/null
+nota "feito."
 
-echo "== consulta via snapshot (reprocessa só o delta) =="
-VIA_SNAP="$(api GET "/contas/{contaId}" "$CONTA")"; echo "  $VIA_SNAP"
+titulo "Consulta via snapshot (reprocessa só o delta)"
+VIA_SNAP="$(api GET "/contas/{contaId}" "$CONTA")"; nota "$VIA_SNAP"
 
-echo "== consulta por replay completo (para comparar o saldo) =="
-COMPLETO="$(api GET "/contas/{contaId}/completo" "$CONTA")"; echo "  $COMPLETO"
+titulo "Consulta por replay completo (para comparar o saldo)"
+COMPLETO="$(api GET "/contas/{contaId}/completo" "$CONTA")"; nota "$COMPLETO"
 
-echo "== conferência: os saldos batem? =="
+titulo "Conferência: os saldos batem?"
 python3 - "$VIA_SNAP" "$COMPLETO" <<'PY'
 import json, sys
 snap, comp = json.loads(sys.argv[1]), json.loads(sys.argv[2])
@@ -84,5 +97,8 @@ print(f"  saldo via snapshot={snap['saldo']} (reprocessou {snap['eventosReproces
 print(f"  saldo replay completo={comp['saldo']} (reprocessou {comp['eventosReprocessados']} eventos)")
 print("  ✓ saldos idênticos — snapshot correto, lendo menos eventos" if igual else "  ✗ DIVERGÊNCIA")
 PY
-echo
-echo "Snapshot = estado materializado; consulta parte dele + só o delta."
+
+linha
+echo " Snapshot = estado materializado; consulta parte dele + só o delta —"
+echo " mesmo resultado do replay completo, lendo muito menos eventos."
+linha

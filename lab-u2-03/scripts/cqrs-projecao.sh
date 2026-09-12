@@ -18,6 +18,10 @@ STACK="u2lab03-cqrs"
 LOCALSTACK="${LOCALSTACK:-0}"
 if [ "$LOCALSTACK" = "1" ]; then AWS="awslocal"; else AWS="aws"; fi
 
+titulo() { printf '\n▶ %s\n' "$1"; }
+nota()   { printf '  %s\n' "$1"; }
+linha()  { printf '%s\n' '───────────────────────────────────────────────────────────────────'; }
+
 FN_COMANDO="u2lab03-comando"
 FN_CONSULTA="u2lab03-consulta"
 FN_REBUILD="u2lab03-rebuild"
@@ -88,42 +92,54 @@ esperar_saldo() {
   return 1
 }
 
+linha
+echo " U2-LAB03 — CQRS: escrita e leitura por caminhos separados"
+linha
+echo "A escrita grava eventos no event store. Uma projeção, alimentada por"
+echo "DynamoDB Streams, atualiza ASSINCRONAMENTE um modelo de leitura (saldo"
+echo "materializado). A consulta lê só essa projeção — nunca o event store"
+echo "direto. Vamos ver a consistência eventual, uma transferência atômica"
+echo "entre contas e o rebuild da projeção a partir do zero."
+
 if [ "$LOCALSTACK" != "1" ]; then URL="$(saida UrlHttpApi)"; fi
 SALDOS="$(saida TabelaSaldos)"
 
-echo "== criar conta A (Maria) e depositar 100 + 50 =="
+titulo "Criando conta A (Maria) e depositando 100 + 50"
 A="$(criar Maria)"
 comando "/contas/{contaId}/depositos" "$A" '{"valor":100}' >/dev/null
 comando "/contas/{contaId}/depositos" "$A" '{"valor":50}' >/dev/null
-echo "  A=$A"
+nota "A=$A"
 
-echo "== consulta logo após escrever — consistência eventual (pode atrasar) =="
-esperar_saldo "$A" 150 && echo "  ✓ projeção convergiu para 150"
+titulo "Consulta logo após escrever — consistência eventual (pode atrasar)"
+esperar_saldo "$A" 150 && nota "✓ projeção convergiu para 150"
 
-echo "== criar conta B (João) e depositar 20 =="
+titulo "Criando conta B (João) e depositando 20"
 B="$(criar Joao)"
 comando "/contas/{contaId}/depositos" "$B" '{"valor":20}' >/dev/null
-esperar_saldo "$B" 20 >/dev/null && echo "  B=$B projeção=20"
+esperar_saldo "$B" 20 >/dev/null && nota "B=$B projeção=20"
 
-echo "== transferência atômica A -> B de 30 (TransactWriteItems) =="
+titulo "Transferência atômica A -> B de 30 (TransactWriteItems)"
 comando "/transferencias" "" "{\"origem\":\"$A\",\"destino\":\"$B\",\"valor\":30}"; echo
 
-echo "== projeções após a transferência (A deve cair p/ 120, B subir p/ 50) =="
-esperar_saldo "$A" 120 >/dev/null && echo "  ✓ A projetou 120"
-esperar_saldo "$B" 50  >/dev/null && echo "  ✓ B projetou 50"
+titulo "Projeções após a transferência (A deve cair p/ 120, B subir p/ 50)"
+esperar_saldo "$A" 120 >/dev/null && nota "✓ A projetou 120"
+esperar_saldo "$B" 50  >/dev/null && nota "✓ B projetou 50"
 
-echo "== CQRS: a consulta lê a tabela de projeção, não o event store =="
+titulo "CQRS na prática: a consulta lê a tabela de projeção, não o event store"
 "$AWS" dynamodb get-item --table-name "$SALDOS" --region "$REGION" \
   --key "{\"contaId\":{\"S\":\"$A\"}}" \
   --query 'Item.{conta:contaId.S,titular:titular.S,saldo:saldo.N,seq:ultimaSequencia.N}' --output table
 
-echo "== rebuild: apagar a projeção de A e reconstruí-la do event store =="
+titulo "Rebuild: apagar a projeção de A e reconstruí-la do event store"
 "$AWS" dynamodb delete-item --table-name "$SALDOS" --region "$REGION" --key "{\"contaId\":{\"S\":\"$A\"}}"
-echo "  projeção de A apagada; consulta agora:"
+nota "projeção de A apagada; consulta agora:"
 consultar "$A"; echo
-echo "  disparando rebuild:"
+nota "disparando rebuild:"
 rebuild; echo
-echo "  consulta de A após o rebuild (deve voltar a 120):"
+nota "consulta de A após o rebuild (deve voltar a 120):"
 consultar "$A"; echo
-echo
-echo "Escrita grava eventos; projeção assíncrona alimenta a leitura; rebuild reconstrói do store."
+
+linha
+echo " Escrita grava eventos; projeção assíncrona alimenta a leitura;"
+echo " rebuild reconstrói a projeção do zero a partir do event store."
+linha

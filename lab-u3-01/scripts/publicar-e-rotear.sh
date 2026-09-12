@@ -16,6 +16,10 @@ STACK="u3lab01-produtor"
 LOCALSTACK="${LOCALSTACK:-0}"
 if [ "$LOCALSTACK" = "1" ]; then AWS="awslocal"; else AWS="aws"; fi
 
+titulo() { printf '\n▶ %s\n' "$1"; }
+nota()   { printf '  %s\n' "$1"; }
+linha()  { printf '%s\n' '───────────────────────────────────────────────────────────────────'; }
+
 LOTE='[
   {"clienteId":"cli-001","mensagem":"nao consigo logar"},
   {"clienteId":"cli-002","mensagem":"cobranca errada"},
@@ -45,10 +49,18 @@ if [ "$LOCALSTACK" != "1" ]; then
     --query "Stacks[0].Outputs[?OutputKey=='UrlHttpApi'].OutputValue" --output text)"
 fi
 
-echo "== publicar 7 eventos (cli-001 x3, cli-002 x2, cli-003 x2) =="
+linha
+echo " U3-LAB01 — Kinesis: roteamento por chave de partição"
+linha
+echo "Kinesis distribui registros entre shards com base num hash da chave de"
+echo "partição (aqui, o clienteId). Vamos publicar mensagens de 3 clientes"
+echo "intercaladas e conferir que cada cliente SEMPRE cai no mesmo shard —"
+echo "é isso que garante ordenação por cliente, como partições no Kafka."
+
+titulo "Publicando 7 eventos (cli-001 x3, cli-002 x2, cli-003 x2)"
 RESP="$(publicar_lote)"
 
-echo "$RESP" | python3 -c '
+python3 -c '
 import sys, json, collections
 d = json.load(sys.stdin)
 por_cliente = collections.defaultdict(set)
@@ -70,6 +82,10 @@ for cliente, shards in sorted(por_cliente.items()):
 shards_usados = {s for ss in por_cliente.values() for s in ss}
 print(f"  shards distintos usados pelos 3 clientes: {len(shards_usados)}")
 print("  ✓ mesma chave -> mesmo shard -> ordenacao por cliente" if todos_ok else "  ✗ inesperado")
-'
-echo
-echo "Chave de roteamento (clienteId) fixa o shard: ordenacao por cliente, como no Kafka."
+' <<<"$RESP"
+
+linha
+echo " Chave de roteamento (clienteId) fixa o shard: ordenação por cliente,"
+echo " como no Kafka. Clientes diferentes podem cair em shards diferentes —"
+echo " e é isso que permite paralelismo entre eles."
+linha

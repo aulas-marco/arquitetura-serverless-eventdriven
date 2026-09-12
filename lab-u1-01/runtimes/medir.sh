@@ -22,8 +22,16 @@ FUNCOES=(u1lab01-runtime-python u1lab01-runtime-java u1lab01-runtime-go)
 DATA="$(date +%Y-%m-%d)"
 SAIDA="resultado-${DATA}.md"
 
-echo "Medindo cold start: ${N} amostras por função, região ${REGION}"
-echo
+titulo() { printf '\n▶ %s\n' "$1"; }
+linha()  { printf '%s\n' '───────────────────────────────────────────────────────────────────'; }
+
+linha
+echo " U1-LAB01 · Parte 4 — Cold start: Python vs. Java vs. Go"
+linha
+echo "Cada runtime paga um custo de inicialização diferente na partida fria."
+echo "Para cada função, forçamos ${N} partidas frias (mudando uma env var, o"
+echo "que recicla o ambiente) e medimos o Init Duration real da linha REPORT."
+echo "Região: ${REGION}."
 
 # Extrai o valor de "Init Duration: X ms" de um bloco de log já decodificado.
 extrai_init() {
@@ -53,7 +61,7 @@ PY
 linhas_tabela=()
 
 for FN in "${FUNCOES[@]}"; do
-  echo ">> ${FN}"
+  titulo "${FN}"
   amostras=()
 
   for i in $(seq 1 "$N"); do
@@ -88,9 +96,9 @@ for FN in "${FUNCOES[@]}"; do
   read -r vmin vmed vp90 <<<"$(estatisticas "${amostras[@]:-}")"
   runtime_label="${FN#u1lab01-runtime-}"
   linhas_tabela+=("| ${runtime_label} | ${#amostras[@]} | ${vmin} | ${vmed} | ${vp90} |")
-  echo
 done
 
+titulo "Tabela comparativa"
 # Monta a tabela markdown.
 {
   echo "# Comparativo de cold start — U1-LAB01 Parte 4"
@@ -106,5 +114,7 @@ done
   echo "> Números são desta captura específica. Reproduza no seu ambiente para valores atuais."
 } | tee "$SAIDA"
 
-echo
-echo "Tabela salva em ${SAIDA}"
+linha
+echo " Tabela salva em ${SAIDA}. Compare a coluna 'Init mediana': é o custo"
+echo " de inicialização que cada runtime paga antes de processar o 1º evento."
+linha

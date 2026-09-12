@@ -21,6 +21,10 @@ TABELA="u2lab02-eventos"
 LOCALSTACK="${LOCALSTACK:-0}"
 if [ "$LOCALSTACK" = "1" ]; then AWS="awslocal"; else AWS="aws"; fi
 
+titulo() { printf '\n▶ %s\n' "$1"; }
+nota()   { printf '  %s\n' "$1"; }
+linha()  { printf '%s\n' '───────────────────────────────────────────────────────────────────'; }
+
 FN="u2lab02-snapshots"
 
 # api — em modo AWS faz curl no HttpApi; em modo LocalStack (HttpApi é Pro)
@@ -54,17 +58,25 @@ if [ "$LOCALSTACK" != "1" ]; then
     --query "Stacks[0].Outputs[?OutputKey=='UrlHttpApi'].OutputValue" --output text)"
 fi
 
-echo "== criar conta + 2 depósitos de 100 (eventos seq 1, 2, 3) =="
+linha
+echo " U2-LAB02 — Pegadinha ao vivo: por que ConditionExpression é obrigatória"
+linha
+echo "Um put_item no DynamoDB, por padrão, é um UPSERT: se a chave já existe,"
+echo "ele SOBRESCREVE em vez de rejeitar. Num event store, isso significa"
+echo "reescrever a história. Vamos corromper um evento de propósito, sem a"
+echo "condição de escrita, e depois mostrar a proteção que o lab usa de verdade."
+
+titulo "Criando conta + 2 depósitos de 100 (eventos seq 1, 2, 3)"
 CONTA="$(api POST "/contas" "" '{"titular":"Maria"}' | python3 -c 'import sys,json; print(json.load(sys.stdin)["contaId"])')"
 api POST "/contas/{contaId}/depositos" "$CONTA" '{"valor":100}' >/dev/null
 api POST "/contas/{contaId}/depositos" "$CONTA" '{"valor":100}' >/dev/null
-echo "  contaId=$CONTA"
+nota "contaId=$CONTA"
 
-echo "== saldo por replay completo (esperado: 200) =="
+titulo "Saldo por replay completo (esperado: 200)"
 api GET "/contas/{contaId}/completo" "$CONTA"; echo
 
-echo "== PEGADINHA: sobrescrever o evento seq 2 SEM ConditionExpression =="
-echo "  (troca o depósito de 100 por 999999 — o DynamoDB aceita como UPDATE)"
+titulo "PEGADINHA: sobrescrever o evento seq 2 SEM ConditionExpression"
+nota "trocando o depósito de 100 por 999999 — o DynamoDB aceita como UPDATE:"
 "$AWS" dynamodb put-item --table-name "$TABELA" --region "$REGION" --item "{
   \"contaId\":{\"S\":\"$CONTA\"},
   \"sequencia\":{\"N\":\"2\"},
@@ -72,13 +84,13 @@ echo "  (troca o depósito de 100 por 999999 — o DynamoDB aceita como UPDATE)"
   \"valor\":{\"N\":\"999999\"},
   \"criadoEm\":{\"N\":\"0\"}
 }"
-echo "  gravação aceita silenciosamente — o evento histórico foi substituído."
+nota "gravação aceita silenciosamente — o evento histórico foi substituído."
 
-echo "== saldo por replay completo agora (corrompido) =="
+titulo "Saldo por replay completo agora (corrompido)"
 api GET "/contas/{contaId}/completo" "$CONTA"; echo
-echo "  a história mudou: sem proteção, o append-only foi violado."
+nota "a história mudou: sem proteção, o append-only foi violado."
 
-echo "== a proteção: repetir a escrita COM a condição do lab =="
+titulo "A proteção: repetir a escrita COM a condição do lab"
 if "$AWS" dynamodb put-item --table-name "$TABELA" --region "$REGION" \
   --condition-expression "attribute_not_exists(contaId) AND attribute_not_exists(sequencia)" \
   --item "{
@@ -88,12 +100,13 @@ if "$AWS" dynamodb put-item --table-name "$TABELA" --region "$REGION" \
     \"valor\":{\"N\":\"1\"},
     \"criadoEm\":{\"N\":\"0\"}
   }" 2>/dev/null; then
-  echo "  ✗ inesperado: a escrita passou (não deveria)"
+  nota "✗ inesperado: a escrita passou (não deveria)"
 else
-  echo "  ✓ ConditionalCheckFailedException — o DynamoDB recusou sobrescrever."
+  nota "✓ ConditionalCheckFailedException — o DynamoDB recusou sobrescrever."
 fi
 
-echo
-echo "Sem ConditionExpression, put_item é um UPSERT: sobrescreve o evento e"
-echo "corrompe o event store. É por isso que o _append do lab SEMPRE usa"
-echo "attribute_not_exists — é o que garante o append-only e a auditoria íntegra."
+linha
+echo " Sem ConditionExpression, put_item é um UPSERT: sobrescreve o evento e"
+echo " corrompe o event store. É por isso que o _append do lab SEMPRE usa"
+echo " attribute_not_exists — é o que garante o append-only e a auditoria íntegra."
+linha

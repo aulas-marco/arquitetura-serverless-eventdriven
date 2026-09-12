@@ -56,7 +56,7 @@ SAM_DEPLOY := --region $(AWS_REGION) --resolve-s3 --capabilities CAPABILITY_IAM 
         build deploy deploy-fundamentos deploy-runtimes deploy-snapstart \
         deploy-fanout fanout deploy-idem idem deploy-dlq dlq \
         deploy-eventstore eventstore deploy-snapshots snapshots \
-        deploy-cqrs cqrs deploy-produtor produtor \
+        deploy-cqrs cqrs deploy-produtor produtor pegadinha \
         deploy-consumidor consumidor deploy-classificador classificador \
         invoke-alo invoke-ciclo gatilhos medir snapstart outputs clean up down
 
@@ -97,6 +97,7 @@ help:
 	@echo "    eventstore         Cria conta, deposita, saca e faz replay"
 	@echo "    deploy-snapshots   Implanta o replay com snapshots (U2-LAB02)"
 	@echo "    snapshots          Acumula eventos, tira snapshot e reprocessa só o delta"
+	@echo "    pegadinha          Pegadinha ao vivo: put_item sem ConditionExpression corrompe o event store (U2V8)"
 	@echo "    deploy-cqrs        Implanta o CQRS + projeção via Streams (U2-LAB03)"
 	@echo "    cqrs               Escreve, projeta, transfere e faz rebuild"
 	@echo "    deploy-produtor    Implanta o produtor Kinesis (U3-LAB01)"
@@ -183,59 +184,99 @@ build:
 deploy: deploy-fundamentos deploy-runtimes deploy-snapstart
 	@echo "✓ 3 stacks implantados"
 
+# Banner didático padrão dos alvos deploy-*: título, recursos criados e o
+# lembrete de onde ver os outputs depois. $(1)=título $(2)=recursos $(3)=stack
+define BANNER_DEPLOY
+	@printf '\n───────────────────────────────────────────────────────────────────\n'
+	@printf ' ▶ Implantando: %s\n' "$(1)"
+	@printf '   Recursos AWS criados: %s\n' "$(2)"
+	@printf '───────────────────────────────────────────────────────────────────\n'
+endef
+define BANNER_DEPLOY_FIM
+	@printf '───────────────────────────────────────────────────────────────────\n'
+	@printf ' ✓ %s implantado (stack %s).\n' "$(1)" "$(2)"
+	@printf '   Outputs (URLs/nomes) acima ↑ — ou rode: make outputs\n'
+	@printf '───────────────────────────────────────────────────────────────────\n'
+endef
+
 deploy-fundamentos:
+	$(call BANNER_DEPLOY,U1-LAB01 Partes 1-3 (Alô mundo · gatilhos · ciclo de vida),3 Lambdas + HTTP API + fila SQS + bucket S3 + regra agendada EventBridge)
 	cd $(LAB)/fundamentos && $(SAM) build && $(SAM) deploy --stack-name u1lab01-partes1a3 $(SAM_DEPLOY)
+	$(call BANNER_DEPLOY_FIM,U1-LAB01 Partes 1-3,u1lab01-partes1a3)
 
 deploy-runtimes:
+	$(call BANNER_DEPLOY,U1-LAB01 Parte 4 (comparativo de runtimes),3 Lambdas — Python · Java · Go)
 	cd $(LAB)/runtimes && $(SAM) build && $(SAM) deploy --stack-name u1lab01-runtimes $(SAM_DEPLOY)
+	$(call BANNER_DEPLOY_FIM,U1-LAB01 Parte 4,u1lab01-runtimes)
 
 deploy-snapstart:
+	$(call BANNER_DEPLOY,U1-LAB01 Parte 5 (SnapStart),2 Lambdas Java — sem SnapStart e com SnapStart (alias :live))
 	cd $(LAB)/snapstart && $(SAM) build && $(SAM) deploy --stack-name u1lab01-snapstart $(SAM_DEPLOY)
+	$(call BANNER_DEPLOY_FIM,U1-LAB01 Parte 5,u1lab01-snapstart)
 
 deploy-fanout:
+	$(call BANNER_DEPLOY,U1-LAB02 (fan-out SNS+SQS),1 tópico SNS + 2 filas SQS + 2 Lambdas consumidoras)
 	cd $(LAB02) && $(SAM) build && $(SAM) deploy --stack-name u1lab02-fanout $(SAM_DEPLOY)
+	$(call BANNER_DEPLOY_FIM,U1-LAB02,u1lab02-fanout)
 
 fanout:
 	cd $(LAB02)/scripts && bash publicar-e-observar.sh
 
 deploy-idem:
+	$(call BANNER_DEPLOY,U1-LAB03 (idempotência SQS+DynamoDB),1 fila SQS + 1 tabela DynamoDB + Lambdas produtor/consumidor)
 	cd $(LAB03) && $(SAM) build && $(SAM) deploy --stack-name u1lab03-idempotencia $(SAM_DEPLOY)
+	$(call BANNER_DEPLOY_FIM,U1-LAB03,u1lab03-idempotencia)
 
 idem:
 	cd $(LAB03)/scripts && bash enviar-duplicado-e-observar.sh
 
 deploy-dlq:
+	$(call BANNER_DEPLOY,U1-LAB04 (DLQ e resiliência),fila principal + DLQ + Lambdas produtor/consumidor)
 	cd $(LAB04) && $(SAM) build && $(SAM) deploy --stack-name u1lab04-dlq $(SAM_DEPLOY)
+	$(call BANNER_DEPLOY_FIM,U1-LAB04,u1lab04-dlq)
 
 dlq:
 	cd $(LAB04)/scripts && bash veneno-e-dlq.sh
 
 deploy-eventstore:
+	$(call BANNER_DEPLOY,U2-LAB01 (event store DynamoDB),1 tabela de eventos (append-only) + Lambda de comando/consulta)
 	cd $(LABU201) && $(SAM) build && $(SAM) deploy --stack-name u2lab01-eventstore $(SAM_DEPLOY)
+	$(call BANNER_DEPLOY_FIM,U2-LAB01,u2lab01-eventstore)
 
 eventstore:
 	cd $(LABU201)/scripts && bash conta-e-replay.sh
 
 deploy-snapshots:
+	$(call BANNER_DEPLOY,U2-LAB02 (replay com snapshots),tabela de eventos + Lambda com snapshot materializado)
 	cd $(LABU202) && $(SAM) build && $(SAM) deploy --stack-name u2lab02-snapshots $(SAM_DEPLOY)
+	$(call BANNER_DEPLOY_FIM,U2-LAB02,u2lab02-snapshots)
 
 snapshots:
 	cd $(LABU202)/scripts && bash snapshot-e-delta.sh
 
+pegadinha:
+	cd $(LABU202)/scripts && bash pegadinha-append-only.sh
+
 deploy-cqrs:
+	$(call BANNER_DEPLOY,U2-LAB03 (CQRS + projeção via Streams),tabela eventos + tabela de projeção (saldos) + 3 Lambdas (comando/consulta/rebuild) + DynamoDB Streams)
 	cd $(LABU203) && $(SAM) build && $(SAM) deploy --stack-name u2lab03-cqrs $(SAM_DEPLOY)
+	$(call BANNER_DEPLOY_FIM,U2-LAB03,u2lab03-cqrs)
 
 cqrs:
 	cd $(LABU203)/scripts && bash cqrs-projecao.sh
 
 deploy-produtor:
+	$(call BANNER_DEPLOY,U3-LAB01 (produtor Kinesis),1 stream Kinesis + Lambda produtora + HTTP API)
 	cd $(LABU301) && $(SAM) build && $(SAM) deploy --stack-name u3lab01-produtor $(SAM_DEPLOY)
+	$(call BANNER_DEPLOY_FIM,U3-LAB01,u3lab01-produtor)
 
 produtor:
 	cd $(LABU301)/scripts && bash publicar-e-rotear.sh
 
 deploy-consumidor:
+	$(call BANNER_DEPLOY,U3-LAB02 (consumidores Kinesis),2 Lambdas consumidoras (A e B) lendo o mesmo stream)
 	cd $(LABU302) && $(SAM) build && $(SAM) deploy --stack-name u3lab02-consumidores $(SAM_DEPLOY)
+	$(call BANNER_DEPLOY_FIM,U3-LAB02,u3lab02-consumidores)
 
 consumidor:
 	cd $(LABU302)/scripts && bash consumir-e-observar.sh
@@ -243,8 +284,10 @@ consumidor:
 deploy-classificador:
 	@test -n "$(ANTHROPIC_API_KEY)" || \
 	  { echo "Erro: exporte ANTHROPIC_API_KEY antes de 'make deploy-classificador'."; exit 1; }
+	$(call BANNER_DEPLOY,U3-LAB03 (classificador IA + cache),fila de tickets + 3 filas de saída + Lambda classificadora + tabela de cache DynamoDB)
 	cd $(LABU303) && $(SAM) build && $(SAM) deploy --stack-name u3lab03-classificador \
 	  --parameter-overrides AnthropicApiKey=$(ANTHROPIC_API_KEY) $(SAM_DEPLOY)
+	$(call BANNER_DEPLOY_FIM,U3-LAB03,u3lab03-classificador)
 
 classificador:
 	cd $(LABU303)/scripts && bash classificar-e-rotear.sh

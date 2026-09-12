@@ -22,6 +22,10 @@ saida() {
     --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text
 }
 
+titulo() { printf '\n▶ %s\n' "$1"; }
+nota()   { printf '  %s\n' "$1"; }
+linha()  { printf '%s\n' '───────────────────────────────────────────────────────────────────'; }
+
 FN="u2lab01-eventstore"
 
 # api — em modo AWS faz curl no HttpApi; em modo LocalStack (HttpApi é Pro)
@@ -75,48 +79,59 @@ api_status() {
   fi
 }
 
+linha
+echo " U2-LAB01 — Event store: estado é sempre reconstruído dos eventos"
+linha
+echo "Nada aqui guarda 'o saldo atual' diretamente. Cada operação (criar,"
+echo "depositar, sacar) grava um FATO imutável e sequencial; o saldo é"
+echo "sempre recalculado a partir do histórico completo (replay). Vamos"
+echo "provar isso, mais a regra de imutabilidade e a concorrência otimística."
+
 if [ "$LOCALSTACK" != "1" ]; then URL="$(saida UrlHttpApi)"; fi
 TABELA="$(saida TabelaNome)"
 
-echo "== criar conta (titular Maria) =="
+titulo "Criando conta (titular Maria)"
 CONTA="$(api POST "/contas" "" '{"titular":"Maria"}' | python3 -c 'import sys,json; print(json.load(sys.stdin)["contaId"])')"
-echo "  contaId=$CONTA"
+nota "contaId=$CONTA"
 
-echo "== depositar 100, depositar 50, sacar 30 =="
+titulo "Depositando 100, depositando 50, sacando 30"
 api POST "/contas/{contaId}/depositos" "$CONTA" '{"valor":100}'; echo
 api POST "/contas/{contaId}/depositos" "$CONTA" '{"valor":50}';  echo
 api POST "/contas/{contaId}/saques"    "$CONTA" '{"valor":30}';  echo
 
-echo "== estado reconstruído por replay (esperado: saldo 120, 4 eventos) =="
+titulo "Estado reconstruído por replay (esperado: saldo 120, 4 eventos)"
 api GET "/contas/{contaId}" "$CONTA"; echo
 
-echo "== saque a descoberto (esperado: 422 saldo insuficiente) =="
-echo "  HTTP $(api_status POST "/contas/{contaId}/saques" "$CONTA" '{"valor":1000}')"
+titulo "Saque a descoberto (esperado: 422 saldo insuficiente)"
+nota "HTTP $(api_status POST "/contas/{contaId}/saques" "$CONTA" '{"valor":1000}')"
 
-echo "== log append-only no DynamoDB (sequência de fatos) =="
+titulo "Log append-only no DynamoDB (sequência de fatos)"
 "$AWS" dynamodb query --table-name "$TABELA" --region "$REGION" \
   --key-condition-expression "contaId = :c" \
   --expression-attribute-values "{\":c\":{\"S\":\"$CONTA\"}}" \
   --query 'Items[].{seq:sequencia.N,tipo:tipo.S}' --output table
 
-echo "== prova do guard: regravar a sequência 1 direto no DynamoDB (deve falhar) =="
+titulo "Prova do guard: regravar a sequência 1 direto no DynamoDB (deve falhar)"
 GUARD="$("$AWS" dynamodb put-item --table-name "$TABELA" --region "$REGION" \
      --item "{\"contaId\":{\"S\":\"$CONTA\"},\"sequencia\":{\"N\":\"1\"},\"tipo\":{\"S\":\"Duplicata\"}}" \
      --condition-expression "attribute_not_exists(contaId) AND attribute_not_exists(sequencia)" 2>&1 || true)"
 if echo "$GUARD" | grep -q "ConditionalCheckFailed"; then
-  echo "  ✓ rejeitado: ConditionalCheckFailedException — a sequência 1 é imutável"
+  nota "✓ rejeitado: ConditionalCheckFailedException — a sequência 1 é imutável"
 else
-  echo "  (inesperado: a gravação passou) — $GUARD"
+  nota "(inesperado: a gravação passou) — $GUARD"
 fi
 
-echo "== concorrência otimística: 5 depósitos de 10 em paralelo =="
+titulo "Concorrência otimística: 5 depósitos de 10 em paralelo"
 for i in 1 2 3 4 5; do
   ( echo "  req$i: HTTP $(api_status POST "/contas/{contaId}/depositos" "$CONTA" '{"valor":10}')" ) &
 done
 wait
-echo "  (200 = gravou; 409 = perdeu a corrida pela sequência e deve repetir)"
+nota "(200 = gravou; 409 = perdeu a corrida pela sequência e deve repetir)"
 
-echo "== estado final (append-only: nenhum update perdido) =="
+titulo "Estado final (append-only: nenhum update perdido)"
 api GET "/contas/{contaId}" "$CONTA"; echo
-echo
-echo "Estado sempre reconstruído dos eventos; sequência imutável; conflito vira 409."
+
+linha
+echo " Estado sempre reconstruído dos eventos; sequência imutável; conflito"
+echo " de escrita concorrente vira 409, nunca uma sobrescrita silenciosa."
+linha

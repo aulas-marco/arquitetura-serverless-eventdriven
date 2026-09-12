@@ -25,6 +25,10 @@ STACK="u3lab03-classificador"
 LOCALSTACK="${LOCALSTACK:-0}"
 if [ "$LOCALSTACK" = "1" ]; then AWS="awslocal"; else AWS="aws"; fi
 
+titulo() { printf '\n▶ %s\n' "$1"; }
+nota()   { printf '  %s\n' "$1"; }
+linha()  { printf '%s\n' '───────────────────────────────────────────────────────────────────'; }
+
 _output() {
   "$AWS" cloudformation describe-stacks --stack-name "$STACK" --region "$REGION" \
     --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text
@@ -72,59 +76,57 @@ _enviar_tickets() {
 
 _ts_ms() { python3 -c "import time; print(int((time.time() - $1) * 1000))"; }
 
-# --------------------------------------------------------------------------
-echo "== Parte 1: ${#TICKETS[@]} tickets distintos → chamadas à API Anthropic =="
+_mostrar_roteamento() {
+  local alta baixa sem total
+  alta=$(_contar "$FILA_ALTA")
+  baixa=$(_contar "$FILA_BAIXA")
+  sem=$(_contar "$FILA_SEM")
+  total=$((alta + baixa + sem))
+  nota "fila alta-prioridade:    $alta mensagem(ns)"
+  nota "fila baixa-prioridade:   $baixa mensagem(ns)"
+  nota "fila sem-classificação:  $sem mensagem(ns)"
+  nota "total roteado: $total / ${#TICKETS[@]}"
+}
+
+linha
+echo " U3-LAB03 — Classificador com IA e cache"
+linha
+echo "Cada ticket que entra na fila é classificado pelo Claude Haiku e"
+echo "roteado para uma de três filas de saída. A segunda parte prova o"
+echo "cache: reenviar os MESMOS textos não deve gerar nenhuma nova chamada"
+echo "à API — o hash SHA-256 do texto já resolve pela tabela DynamoDB."
+
+titulo "Parte 1 — ${#TICKETS[@]} tickets distintos → chamadas à API Anthropic"
 _limpar_filas
 _enviar_tickets
-echo "   ${#TICKETS[@]} tickets enviados. Aguardando classificação (45s)..."
+nota "${#TICKETS[@]} tickets enviados. Aguardando classificação (45s)…"
 sleep 45
+_mostrar_roteamento
 
-ALTA=$(_contar "$FILA_ALTA")
-BAIXA=$(_contar "$FILA_BAIXA")
-SEM=$(_contar "$FILA_SEM")
-TOTAL=$((ALTA + BAIXA + SEM))
-
-echo ""
-echo "   Fila alta-prioridade:    $ALTA mensagem(ns)"
-echo "   Fila baixa-prioridade:   $BAIXA mensagem(ns)"
-echo "   Fila sem-classificação:  $SEM mensagem(ns)"
-echo "   Total roteado: $TOTAL / ${#TICKETS[@]}"
-echo ""
-echo "   Logs (note 'api' — cada ticket chamou o Claude Haiku):"
+titulo "Logs (note 'api' — cada ticket chamou o Claude Haiku)"
 "$AWS" logs filter-log-events \
   --log-group-name "/aws/lambda/u3lab03-classificador" \
   --start-time "$(_ts_ms 55)" \
   --filter-pattern "CLASSIFICADO" --region "$REGION" \
   --query 'events[*].message' --output text 2>/dev/null | head -12 \
-  || echo "   (sem logs recentes)"
+  || echo "  (sem logs recentes)"
 
-# --------------------------------------------------------------------------
-echo ""
-echo "== Parte 2: os mesmos ${#TICKETS[@]} tickets → 0 chamadas à API (cache) =="
+titulo "Parte 2 — os mesmos ${#TICKETS[@]} tickets → 0 chamadas à API (cache)"
 _limpar_filas
 _enviar_tickets
-echo "   ${#TICKETS[@]} tickets enviados. Aguardando (30s)..."
+nota "${#TICKETS[@]} tickets enviados. Aguardando (30s)…"
 sleep 30
+_mostrar_roteamento
 
-ALTA=$(_contar "$FILA_ALTA")
-BAIXA=$(_contar "$FILA_BAIXA")
-SEM=$(_contar "$FILA_SEM")
-TOTAL=$((ALTA + BAIXA + SEM))
-
-echo ""
-echo "   Fila alta-prioridade:    $ALTA mensagem(ns)"
-echo "   Fila baixa-prioridade:   $BAIXA mensagem(ns)"
-echo "   Fila sem-classificação:  $SEM mensagem(ns)"
-echo "   Total roteado: $TOTAL / ${#TICKETS[@]}"
-echo ""
-echo "   Logs (note 'cache' — nenhuma chamada à API Anthropic foi feita):"
+titulo "Logs (note 'cache' — nenhuma chamada à API Anthropic foi feita)"
 "$AWS" logs filter-log-events \
   --log-group-name "/aws/lambda/u3lab03-classificador" \
   --start-time "$(_ts_ms 40)" \
   --filter-pattern "CLASSIFICADO" --region "$REGION" \
   --query 'events[*].message' --output text 2>/dev/null | head -12 \
-  || echo "   (sem logs recentes)"
+  || echo "  (sem logs recentes)"
 
-echo ""
-echo "Cache DynamoDB (SHA-256 do texto, TTL 24h) eliminou as ${#TICKETS[@]} chamadas"
-echo "à API na segunda rodada — mesma classificação, custo zero de LLM."
+linha
+echo " Cache DynamoDB (SHA-256 do texto, TTL 24h) eliminou as ${#TICKETS[@]}"
+echo " chamadas à API na segunda rodada — mesma classificação, custo zero de LLM."
+linha
