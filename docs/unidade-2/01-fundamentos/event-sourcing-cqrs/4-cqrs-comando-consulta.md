@@ -31,14 +31,22 @@ O `comando.py` grava o evento no event store e nunca lê a projeção. Ele recon
 
 ```python
 # comando.py — fiel ao que está em lab-u2-03
-def _comando(contaId, decidir):
+def _carregar_conta(contaId):
     eventos = _eventos(contaId)
     if not eventos:
-        return _resp(404, {"erro": "conta não encontrada"})
-    conta = reconstruir(contaId, eventos)
-    evento = decidir(conta)
+        raise ContaNaoEncontrada()   # o handler converte em HTTP 404
+    return reconstruir(contaId, eventos), eventos
+
+
+def _gravar_e_responder(conta, evento, eventos):
     _append(evento, len(eventos) + 1)
-    return _resp(200, {"contaId": contaId, "saldo": _num(conta.aplicar(evento).saldo)})
+    return _resp(200, {"contaId": conta.contaId, "saldo": _num(conta.aplicar(evento).saldo)})
+
+
+# dentro do lambda_handler, rota de depósito:
+conta, eventos = _carregar_conta(params["contaId"])
+evento = depositar(conta, _dec(corpo["valor"]))
+return _gravar_e_responder(conta, evento, eventos)
 ```
 
 O carregamento usa `ConsistentRead=True` — o lado de comando **precisa** ver os eventos recém-gravados para calcular a próxima sequência; uma leitura eventualmente consistente colidiria na gravação.

@@ -32,11 +32,9 @@ Cada Lambda tem uma responsabilidade única e uma tabela de destino explícita �
 `comando.py` reconstrói o agregado lendo a tabela `eventos` com `ConsistentRead=True` e grava o novo evento com a condição de sequência (concorrência otimística). Ele **não** consulta `saldos` — a projeção é eventualmente consistente e não serve de base para decisão de negócio.
 
 ```python
-def _comando(contaId, decidir):
-    eventos = _eventos(contaId)          # lê o event store, não a projeção
-    conta = reconstruir(contaId, eventos)
-    evento = decidir(conta)              # valida sobre o estado reconstruído
-    _append(evento, len(eventos) + 1)    # grava com ConditionExpression de sequência
+conta, eventos = _carregar_conta(contaId)   # lê o event store, não a projeção
+evento = depositar(conta, valor)            # valida sobre o estado reconstruído
+_append(evento, len(eventos) + 1)           # grava com ConditionExpression de sequência
 ```
 
 ## 3. Regra de ouro nº 2 — a consulta nunca faz replay

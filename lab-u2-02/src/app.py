@@ -47,6 +47,10 @@ class Conflito(Exception):
     pass
 
 
+class ContaNaoEncontrada(Exception):
+    pass
+
+
 def _dec(x):
     return Decimal(str(x))
 
@@ -81,14 +85,18 @@ def _append(evento, sequencia):
     return item
 
 
-def _comando(contaId, decidir):
+def _carregar_conta(contaId):
+    """Lê os eventos e reconstrói o estado. Devolve (conta, eventos)."""
     eventos = _eventos(contaId)
     if not eventos:
-        return _resp(404, {"erro": "conta não encontrada"})
-    conta = reconstruir(contaId, eventos)
-    evento = decidir(conta)
+        raise ContaNaoEncontrada()
+    return reconstruir(contaId, eventos), eventos
+
+
+def _gravar_e_responder(conta, evento, eventos):
+    """Grava o evento na próxima sequência e devolve o saldo atualizado."""
     _append(evento, len(eventos) + 1)
-    return _resp(200, {"contaId": contaId, "saldo": _num(conta.aplicar(evento).saldo)})
+    return _resp(200, {"contaId": conta.contaId, "saldo": _num(conta.aplicar(evento).saldo)})
 
 
 def _gravar_snapshot(contaId):
@@ -136,10 +144,14 @@ def lambda_handler(event, context):
             return _resp(201, {"contaId": contaId})
 
         if rota == "POST /contas/{contaId}/depositos":
-            return _comando(params["contaId"], lambda c: depositar(c, _dec(corpo["valor"])))
+            conta, eventos = _carregar_conta(params["contaId"])
+            evento = depositar(conta, _dec(corpo["valor"]))
+            return _gravar_e_responder(conta, evento, eventos)
 
         if rota == "POST /contas/{contaId}/saques":
-            return _comando(params["contaId"], lambda c: sacar(c, _dec(corpo["valor"])))
+            conta, eventos = _carregar_conta(params["contaId"])
+            evento = sacar(conta, _dec(corpo["valor"]))
+            return _gravar_e_responder(conta, evento, eventos)
 
         if rota == "POST /contas/{contaId}/snapshot":
             return _gravar_snapshot(params["contaId"])
@@ -162,6 +174,8 @@ def lambda_handler(event, context):
 
         return _resp(404, {"erro": f"rota desconhecida: {rota}"})
 
+    except ContaNaoEncontrada:
+        return _resp(404, {"erro": "conta não encontrada"})
     except ComandoInvalido as erro:
         return _resp(400, {"erro": str(erro)})
     except SaldoInsuficiente as erro:
