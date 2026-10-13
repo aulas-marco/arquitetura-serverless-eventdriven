@@ -54,7 +54,7 @@ SAM_DEPLOY := --region $(AWS_REGION) --resolve-s3 --capabilities CAPABILITY_IAM 
 .PHONY: help test test-fundamentos test-runtimes test-snapstart test-fanout \
         test-idempotencia test-dlq test-eventstore test-snapshots test-cqrs \
         test-produtor test-consumidor test-classificador test-kafka \
-        kafka-up kafka-down kafka-rotear kafka-grupos kafka-reentrega \
+        kafka-up kafka-down kafka-clean kafka-rotear kafka-grupos kafka-reentrega \
         build deploy deploy-fundamentos deploy-runtimes deploy-snapstart \
         deploy-fanout fanout deploy-idem idem deploy-dlq dlq \
         deploy-eventstore eventstore deploy-snapshots snapshots \
@@ -118,6 +118,7 @@ help:
 	@echo "    kafka-grupos       Consumer groups e rebalanceamento (1, 2 e 3 consumidores)"
 	@echo "    kafka-reentrega    At-least-once: falha antes do commit e reentrega"
 	@echo "    kafka-down         Derruba o broker e apaga os dados"
+	@echo "    kafka-clean        kafka-down + remove o cliente instalado e caches do lab"
 	@echo ""
 	@echo "  LocalStack (opcional, Partes 1-3):"
 	@echo "    up | down          Sobe/derruba o LocalStack"
@@ -373,6 +374,15 @@ kafka-up:
 
 kafka-down:
 	$(KAFKA_COMPOSE) down -v
+
+# Limpeza completa da trilha: o prefixo `-` deixa a limpeza dos arquivos seguir
+# mesmo com o Docker parado. O marcador .kafka-deps some, então o próximo
+# `make kafka-*` reinstala o confluent-kafka no .venv.
+kafka-clean:
+	-$(KAFKA_COMPOSE) down -v
+	rm -f $(KAFKA_DEPS)
+	rm -rf $(LABU3K)/src/__pycache__ $(LABU3K)/tests/__pycache__ $(LABU3K)/.pytest_cache
+	@echo "Kafka local derrubado e artefatos do lab-u3-kafka limpos."
 
 kafka-rotear: $(KAFKA_DEPS)
 	cd $(LABU3K)/scripts && bash rotear-por-chave.sh

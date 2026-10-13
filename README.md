@@ -153,6 +153,7 @@ make kafka-rotear      # U3-KAFKA — roteamento por chave de partição
 make kafka-grupos      # U3-KAFKA — consumer groups e rebalanceamento
 make kafka-reentrega   # U3-KAFKA — at-least-once com reentrega
 make kafka-down        # derruba o broker e apaga os dados
+make kafka-clean       # kafka-down + remove o cliente instalado e os caches do lab
 
 # LocalStack — roda qualquer lab sem conta AWS (ver seção LocalStack)
 make up                # sobe o LocalStack (Community, imagem :3)

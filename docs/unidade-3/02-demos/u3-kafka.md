@@ -184,6 +184,7 @@ Neste exemplo, `cli-001` e `cli-003` caíram na mesma partição (a 1), e `cli-0
 
 ```bash
 make kafka-down    # derruba o container e remove o volume com os dados
+make kafka-clean   # faz o mesmo e remove também o confluent-kafka instalado e os caches do lab
 ```
 
 ## 10. Referências

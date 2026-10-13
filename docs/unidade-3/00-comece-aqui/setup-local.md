@@ -128,6 +128,7 @@ make kafka-rotear     # roteamento por chave de partição
 make kafka-grupos     # consumer groups e rebalanceamento
 make kafka-reentrega  # at-least-once com reentrega
 make kafka-down       # derruba o broker e apaga os dados
+make kafka-clean      # kafka-down + remove o cliente instalado e os caches do lab
 ```
 
 O `make` instala o `confluent-kafka` no `.venv` na primeira execução, e a imagem `apache/kafka:4.2.2` é baixada na primeira subida do broker. Os testes de unidade da trilha rodam sem Docker com `make test-kafka`.
