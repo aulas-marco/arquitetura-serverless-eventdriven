@@ -115,6 +115,7 @@ help:
 	@echo "  Kafka local (Docker, sem AWS):"
 	@echo "    kafka-up           Sobe o broker Kafka e cria o tópico (4 partições)"
 	@echo "    kafka-rotear       Roteamento por chave de partição (mesma chave, mesma partição)"
+	@echo "    kafka-grupos       Consumer groups e rebalanceamento (1, 2 e 3 consumidores)"
 	@echo "    kafka-down         Derruba o broker e apaga os dados"
 	@echo ""
 	@echo "  LocalStack (opcional, Partes 1-3):"
@@ -374,6 +375,9 @@ kafka-down:
 
 kafka-rotear: $(KAFKA_DEPS)
 	cd $(LABU3K)/scripts && bash rotear-por-chave.sh
+
+kafka-grupos: $(KAFKA_DEPS)
+	cd $(LABU3K)/scripts && bash grupos-e-rebalanceamento.sh
 
 # ==========================================================================
 # LocalStack — opcional, para as Partes 1-3 sem conta AWS
