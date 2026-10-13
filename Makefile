@@ -17,6 +17,7 @@ LABU203    := lab-u2-03
 LABU301    := lab-u3-01
 LABU302    := lab-u3-02
 LABU303    := lab-u3-03
+LABU3K     := lab-u3-kafka
 AWS_REGION ?= us-east-1
 N          ?= 5
 export AWS_DEFAULT_REGION := $(AWS_REGION)
@@ -52,7 +53,8 @@ SAM_DEPLOY := --region $(AWS_REGION) --resolve-s3 --capabilities CAPABILITY_IAM 
 
 .PHONY: help test test-fundamentos test-runtimes test-snapstart test-fanout \
         test-idempotencia test-dlq test-eventstore test-snapshots test-cqrs \
-        test-produtor test-consumidor test-classificador \
+        test-produtor test-consumidor test-classificador test-kafka \
+        kafka-up kafka-down kafka-rotear kafka-grupos kafka-reentrega \
         build deploy deploy-fundamentos deploy-runtimes deploy-snapstart \
         deploy-fanout fanout deploy-idem idem deploy-dlq dlq \
         deploy-eventstore eventstore deploy-snapshots snapshots \
@@ -77,6 +79,7 @@ help:
 	@echo "    test-produtor      pytest do produtor Kinesis (U3-LAB01)"
 	@echo "    test-consumidor    pytest dos consumidores Kinesis (U3-LAB02)"
 	@echo "    test-classificador pytest do classificador IA+cache (U3-LAB03)"
+	@echo "    test-kafka         pytest do lab Kafka local (U3, trilha Docker)"
 	@echo ""
 	@echo "  Nuvem (exigem credenciais AWS):"
 	@echo "    build              sam build das partes do U1-LAB01"
@@ -120,7 +123,7 @@ $(PYTEST):
 	$(VENV)/bin/pip install -q --upgrade pip pytest
 
 test: test-fundamentos test-runtimes test-snapstart test-fanout test-idempotencia test-dlq \
-      test-eventstore test-snapshots test-cqrs test-produtor test-consumidor test-classificador
+      test-eventstore test-snapshots test-cqrs test-produtor test-consumidor test-classificador test-kafka
 	@echo "✓ Todos os testes de unidade passaram"
 
 test-fundamentos: $(PYTEST)
@@ -172,6 +175,10 @@ test-consumidor: $(PYTEST)
 test-classificador: $(PYTEST)
 	@echo "▶ U3-LAB03 — pytest (hash, prompt e parsing da resposta IA)"
 	cd $(LABU303) && $(PYTEST) -q
+
+test-kafka: $(PYTEST)
+	@echo "▶ U3-KAFKA — pytest (validação de evento, lote e regra de falha)"
+	cd $(LABU3K) && $(PYTEST) -q
 
 # ==========================================================================
 # Nuvem — exigem credenciais AWS (aws configure)
