@@ -114,6 +114,7 @@ help:
 	@echo ""
 	@echo "  Kafka local (Docker, sem AWS):"
 	@echo "    kafka-up           Sobe o broker Kafka e cria o tópico (4 partições)"
+	@echo "    kafka-rotear       Roteamento por chave de partição (mesma chave, mesma partição)"
 	@echo "    kafka-down         Derruba o broker e apaga os dados"
 	@echo ""
 	@echo "  LocalStack (opcional, Partes 1-3):"
@@ -355,6 +356,13 @@ clean:
 # ==========================================================================
 KAFKA_COMPOSE := docker compose -f $(LABU3K)/compose.yaml
 
+# Instala o cliente Kafka no .venv só quando o requirements.txt muda.
+KAFKA_DEPS := $(VENV)/.kafka-deps
+
+$(KAFKA_DEPS): $(LABU3K)/requirements.txt | $(PYTEST)
+	$(VENV)/bin/pip install -q -r $(LABU3K)/requirements.txt
+	touch $@
+
 kafka-up:
 	$(KAFKA_COMPOSE) up -d --wait kafka
 	$(KAFKA_COMPOSE) run --rm criar-topico
@@ -363,6 +371,9 @@ kafka-up:
 
 kafka-down:
 	$(KAFKA_COMPOSE) down -v
+
+kafka-rotear: $(KAFKA_DEPS)
+	cd $(LABU3K)/scripts && bash rotear-por-chave.sh
 
 # ==========================================================================
 # LocalStack — opcional, para as Partes 1-3 sem conta AWS
