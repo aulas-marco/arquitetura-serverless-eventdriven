@@ -5,7 +5,9 @@ services:
     image: apache/kafka:4.2.2
     container_name: u3kafka-broker
     ports:
-      - "9092:9092"
+      # Só a própria máquina alcança o broker: ele roda em PLAINTEXT, sem
+      # autenticação, então não vai para a rede da sala de aula.
+      - "127.0.0.1:9092:9092"
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller

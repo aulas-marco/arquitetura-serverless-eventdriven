@@ -169,6 +169,7 @@ Neste exemplo, `cli-001` e `cli-003` caíram na mesma partição (a 1), e `cli-0
 | O quinto consumidor do grupo não recebe nada | Cada partição tem um único membro por grupo | Com 4 partições, o grupo usa no máximo 4 membros. |
 | O registro que falhou volta, e os seguintes também | O commit é por offset, e a partição recomeça do último offset confirmado | Por isso o processamento precisa ser idempotente. |
 | `make kafka-up` não conecta | Docker ou Colima parado | Rodar `colima start` (ou abrir o Docker Desktop) e repetir. |
+| `docker: 'compose' is not a docker command` | Falta o plugin Docker Compose v2 | Instalar o plugin e confirmar com `docker compose version` (ver [Setup local](../00-comece-aqui/setup-local.md)). |
 | Porta 9092 ocupada | Outro processo usa a porta | Parar o processo ou o broker anterior com `make kafka-down`. |
 
 ## 8. Checklist de compreensão

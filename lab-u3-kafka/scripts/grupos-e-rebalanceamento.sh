@@ -87,19 +87,24 @@ esperar_linhas "$TMP/c1.log" "ATRIBUIDO" 1 30
 grep "ATRIBUIDO" "$TMP/c1.log" | tail -1 | sed 's/^/  /'
 
 nota "Entra o consumidor c2: o grupo é rebalanceado…"
+# Registra quantas atribuições c1 já tinha, para esperar a PRÓXIMA e nunca ler
+# uma atribuição antiga como se fosse a do rebalanceamento atual.
+ANTES_1="$(contar_linhas "$TMP/c1.log" "ATRIBUIDO")"
 iniciar_consumidor "c2" "$GRUPO_REB" "$TMP/c2.log"
 PID_2="$LAST_PID"
 esperar_linhas "$TMP/c2.log" "ATRIBUIDO" 1 30
-esperar_linhas "$TMP/c1.log" "ATRIBUIDO" 2 30
+esperar_linhas "$TMP/c1.log" "ATRIBUIDO" "$((ANTES_1 + 1))" 30
 grep "ATRIBUIDO" "$TMP/c1.log" | tail -1 | sed 's/^/  /'
 grep "ATRIBUIDO" "$TMP/c2.log" | tail -1 | sed 's/^/  /'
 
 nota "Entra o consumidor c3: novo rebalanceamento…"
+ANTES_1="$(contar_linhas "$TMP/c1.log" "ATRIBUIDO")"
+ANTES_2="$(contar_linhas "$TMP/c2.log" "ATRIBUIDO")"
 iniciar_consumidor "c3" "$GRUPO_REB" "$TMP/c3.log"
 PID_3="$LAST_PID"
 esperar_linhas "$TMP/c3.log" "ATRIBUIDO" 1 30
-esperar_linhas "$TMP/c1.log" "ATRIBUIDO" 3 30
-esperar_linhas "$TMP/c2.log" "ATRIBUIDO" 2 30
+esperar_linhas "$TMP/c1.log" "ATRIBUIDO" "$((ANTES_1 + 1))" 30
+esperar_linhas "$TMP/c2.log" "ATRIBUIDO" "$((ANTES_2 + 1))" 30
 
 titulo "Atribuição final (última linha [ATRIBUIDO] de cada membro)"
 for n in 1 2 3; do

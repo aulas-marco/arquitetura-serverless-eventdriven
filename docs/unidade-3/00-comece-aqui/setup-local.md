@@ -120,7 +120,7 @@ Funcionam no Community: *Lambda*, SQS, DynamoDB (+ *TTL*) e Kinesis (+ *Event So
 
 ## 6. Kafka local (trilha complementar, sem conta AWS)
 
-A trilha [U3-KAFKA](../02-demos/u3-kafka.md) executa Kafka real em um container Docker e dispensa conta AWS e LocalStack. O Docker precisa estar em execução (no Colima, `colima start`).
+A trilha [U3-KAFKA](../02-demos/u3-kafka.md) executa Kafka real em um container Docker e dispensa conta AWS e LocalStack. O Docker precisa estar em execução (no Colima, `colima start`) e com o plugin Docker Compose v2 instalado, o que se confirma com `docker compose version`.
 
 ```bash
 make kafka-up         # sobe o broker em localhost:9092 e cria o tópico (4 partições)
@@ -151,6 +151,10 @@ O LAB02 depende do *stream* `u3lab01-eventos-suporte` criado pelo LAB01. Rode `m
 ### `make kafka-up` não conecta ao Docker
 
 A mensagem *"Cannot connect to the Docker daemon"* indica que o daemon do Docker não está em execução neste computador, e o comando precisa dele para subir o broker. Rode `colima start` (ou abra o Docker Desktop) e repita o comando em seguida.
+
+### `docker: 'compose' is not a docker command`
+
+O comando `make kafka-up` usa `docker compose`, que é um plugin separado do cliente `docker`, e instalações de Colima feitas só com o Homebrew costumam não trazê-lo. Instale com `brew install docker-compose`, siga as instruções que o Homebrew imprime ao final da instalação para registrar o plugin e confirme com `docker compose version` antes de repetir o comando.
 
 ### Limpar tudo
 

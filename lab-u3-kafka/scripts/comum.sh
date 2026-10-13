@@ -46,6 +46,14 @@ esperar_linhas() {
   return 1
 }
 
+# contar_linhas <arquivo> <padrão> — quantas linhas do arquivo casam com o padrão.
+# Serve para registrar o ponto de partida antes de esperar a PRÓXIMA ocorrência.
+contar_linhas() {
+  local n
+  n="$(grep -c -- "$2" "$1" 2>/dev/null || true)"
+  echo "${n:-0}"
+}
+
 # esperar_fim <pid> <segundos> — espera o processo terminar sozinho.
 # Devolve 1 se o tempo estourar.
 esperar_fim() {
