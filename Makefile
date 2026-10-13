@@ -116,6 +116,7 @@ help:
 	@echo "    kafka-up           Sobe o broker Kafka e cria o tópico (4 partições)"
 	@echo "    kafka-rotear       Roteamento por chave de partição (mesma chave, mesma partição)"
 	@echo "    kafka-grupos       Consumer groups e rebalanceamento (1, 2 e 3 consumidores)"
+	@echo "    kafka-reentrega    At-least-once: falha antes do commit e reentrega"
 	@echo "    kafka-down         Derruba o broker e apaga os dados"
 	@echo ""
 	@echo "  LocalStack (opcional, Partes 1-3):"
@@ -378,6 +379,9 @@ kafka-rotear: $(KAFKA_DEPS)
 
 kafka-grupos: $(KAFKA_DEPS)
 	cd $(LABU3K)/scripts && bash grupos-e-rebalanceamento.sh
+
+kafka-reentrega: $(KAFKA_DEPS)
+	cd $(LABU3K)/scripts && bash reentrega.sh
 
 # ==========================================================================
 # LocalStack — opcional, para as Partes 1-3 sem conta AWS
