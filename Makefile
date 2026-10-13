@@ -112,6 +112,10 @@ help:
 	@echo "    outputs            Mostra os outputs dos stacks"
 	@echo "    clean              Remove todos os stacks + artefatos locais"
 	@echo ""
+	@echo "  Kafka local (Docker, sem AWS):"
+	@echo "    kafka-up           Sobe o broker Kafka e cria o tópico (4 partições)"
+	@echo "    kafka-down         Derruba o broker e apaga os dados"
+	@echo ""
 	@echo "  LocalStack (opcional, Partes 1-3):"
 	@echo "    up | down          Sobe/derruba o LocalStack"
 
@@ -345,6 +349,20 @@ clean:
 	rm -rf $(LAB)/fundamentos/.aws-sam $(LAB)/runtimes/.aws-sam $(LAB)/snapstart/.aws-sam
 	rm -rf $(LAB02)/.aws-sam $(LAB03)/.aws-sam $(LAB04)/.aws-sam $(LABU201)/.aws-sam $(LABU202)/.aws-sam $(LABU203)/.aws-sam $(LABU301)/.aws-sam $(LABU302)/.aws-sam $(LABU303)/.aws-sam
 	@echo "Stacks marcados para remoção (assíncrono) e artefatos locais limpos."
+
+# ==========================================================================
+# Kafka local (Docker) — trilha complementar da Unidade 3, sem AWS
+# ==========================================================================
+KAFKA_COMPOSE := docker compose -f $(LABU3K)/compose.yaml
+
+kafka-up:
+	$(KAFKA_COMPOSE) up -d --wait kafka
+	$(KAFKA_COMPOSE) run --rm criar-topico
+	@echo "Kafka em localhost:9092, tópico u3kafka-eventos-suporte (4 partições)."
+	@echo "Demos: make kafka-rotear | make kafka-grupos | make kafka-reentrega"
+
+kafka-down:
+	$(KAFKA_COMPOSE) down -v
 
 # ==========================================================================
 # LocalStack — opcional, para as Partes 1-3 sem conta AWS
