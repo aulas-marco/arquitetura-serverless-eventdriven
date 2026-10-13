@@ -21,7 +21,7 @@ Os teleprompters conceituais desta unidade ensinam **Apache Kafka** — o log pe
 
 ## 2. Onde a analogia quebra
 
-- **Rebalanceamento ao vivo (1→2→3 instâncias)** é uma demo clássica no Kafka. O ESM do Kinesis **não** expõe isso da mesma forma — a atribuição de shards a invocações é automática. Os laboratórios modelam "dois consumidores independentes" (dois Lambdas) como o análogo de dois *consumer groups* distintos, e usam o `ParallelizationFactor` como eixo de paralelismo.
+- **Rebalanceamento ao vivo (1→2→3 instâncias)** é uma demo clássica no Kafka. O ESM do Kinesis **não** expõe isso da mesma forma — a atribuição de shards a invocações é automática. Os laboratórios modelam "dois consumidores independentes" (dois Lambdas) como o análogo de dois *consumer groups* distintos, e usam o `ParallelizationFactor` como eixo de paralelismo. A trilha complementar [U3-KAFKA](../../02-demos/u3-kafka.md) demonstra o rebalanceamento em um broker Kafka local.
 - **Retenção e replay** existem nos dois (o evento não some ao ser lido), mas a configuração e os limites diferem.
 
 ## 3. Por que Kinesis nesta disciplina

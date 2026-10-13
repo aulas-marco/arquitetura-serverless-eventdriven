@@ -74,6 +74,20 @@ No Kafka, um consumer group é um conjunto de consumidores que compartilham a le
 
 ---
 
+<a id="offset"></a>
+### Offset
+
+Posição de um registro dentro de uma partição Kafka, um inteiro que cresce de forma sequencial a partir de 0. O consumer group guarda, por partição, o último offset confirmado (commit), e é desse ponto que um consumidor reiniciado recomeça. No Kinesis, o análogo é o [sequenceNumber](#sequence-number), que é opaco e não é um inteiro sequencial. Usado na trilha [U3-KAFKA](02-demos/u3-kafka.md).
+
+---
+
+<a id="rebalanceamento"></a>
+### Rebalanceamento
+
+Redistribuição das partições de um tópico entre os membros de um consumer group, disparada quando um membro entra, sai ou deixa de responder. Durante o rebalanceamento, os membros revogam as partições que tinham e recebem as novas atribuições. O Event Source Mapping do Kinesis faz a atribuição de shards sem expor esse processo, e a trilha [U3-KAFKA](02-demos/u3-kafka.md) o mostra com 1, 2 e 3 consumidores.
+
+---
+
 <a id="llm"></a>
 ### LLM (Large Language Model)
 

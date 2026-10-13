@@ -16,6 +16,7 @@ Leia na ordem. Cada peça se apoia na anterior.
 | — | [**Demo: U3-LAB01**](02-demos/u3-01.md) | Produtor Kinesis com roteamento por clienteId |
 | — | [**Demo: U3-LAB02**](02-demos/u3-02.md) | Dois consumidores independentes e at-least-once |
 | — | [**Demo: U3-LAB03**](02-demos/u3-03.md) | Classificador IA com cache DynamoDB |
+| — | [**Demo: U3-KAFKA**](02-demos/u3-kafka.md) | Trilha complementar: Kafka real em Docker, sem AWS |
 | — | [Arquitetura da unidade](03-arquitetura/arquitetura.md) | Diagramas de stream, consumidores e pipeline IA |
 | — | [Exercícios](exercicios.md) | Desafios para fixar |
 | — | [Glossário](glossario.md) | Termos e siglas (fonte única) |
@@ -27,6 +28,7 @@ Leia na ordem. Cada peça se apoia na anterior.
 | **U3-LAB01** | [Produtor Kinesis — roteamento por clienteId](02-demos/u3-01.md) | ✅ Disponível |
 | **U3-LAB02** | [Consumidores Kinesis e at-least-once](02-demos/u3-02.md) | ✅ Disponível |
 | **U3-LAB03** | [Classificador IA + cache DynamoDB](02-demos/u3-03.md) | ✅ Disponível |
+| **U3-KAFKA** | [Kafka local: partições, consumer groups e reentrega](02-demos/u3-kafka.md) | ✅ Disponível (complementar, Docker) |
 
 ## Objetivos de aprendizagem
 

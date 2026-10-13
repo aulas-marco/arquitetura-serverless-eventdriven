@@ -49,6 +49,10 @@ Cada laboratório é uma pasta autocontida (`lab-uNvV-slug/`) com seu próprio t
 │   ├── src/                        ← classificador + suporte (Python)
 │   ├── tests/                      ← pytest (hash, prompt, parsing JSON, TTL)
 │   └── scripts/                    ← classificar-e-rotear.sh
+├── lab-u3-kafka/ ← U3-KAFKA: Kafka local em Docker (partições, consumer groups, reentrega)
+│   ├── src/                        ← produtor + consumidor + lógica pura (Python)
+│   ├── tests/                      ← pytest (validação de evento e regra de falha)
+│   └── scripts/                    ← rotear-por-chave.sh · grupos-e-rebalanceamento.sh · reentrega.sh
 ├── docs/unidade-1/                 ← documentação da Unidade 1 (fundamentos, demos, arquitetura, glossário)
 ├── docs/unidade-2/                 ← documentação da Unidade 2 (Event Sourcing e CQRS)
 ├── docs/unidade-3/                 ← documentação da Unidade 3 (streaming, consumidores, IA)
@@ -70,6 +74,7 @@ Cada laboratório é uma pasta autocontida (`lab-uNvV-slug/`) com seu próprio t
 | [`lab-u3-01`](lab-u3-01/) | 3 | Produtor Kinesis (roteamento por shard) | Python + SAM · Kinesis | ✅ |
 | [`lab-u3-02`](lab-u3-02/) | 3 | Consumidores Kinesis (ESM, at-least-once) | Python + SAM · Kinesis | ✅ |
 | [`lab-u3-03`](lab-u3-03/) | 3 | Classificador IA + cache | Python + SAM · SQS · DynamoDB · Anthropic | ✅ |
+| [`lab-u3-kafka`](lab-u3-kafka/) | 3 | Kafka local em Docker (partições, consumer groups, reentrega) | Python · Kafka · Docker | ✅ |
 
 ## Documentação
 
@@ -112,6 +117,7 @@ make test-cqrs         # U2-LAB03 projeção CQRS (pytest)
 make test-produtor     # U3-LAB01 produtor Kinesis (pytest)
 make test-consumidor   # U3-LAB02 consumidores Kinesis (pytest)
 make test-classificador # U3-LAB03 classificador IA + cache (pytest)
+make test-kafka        # U3-KAFKA lógica pura (pytest, sem Docker)
 
 # Nuvem — requerem credenciais AWS
 make deploy            # implanta os 3 stacks do U1-LAB01
@@ -140,6 +146,13 @@ make deploy-classificador # U3-LAB03 — implanta o classificador (exige ANTHROP
 make classificador     # U3-LAB03 — classifica tickets e demonstra o cache
 make outputs           # outputs dos stacks
 make clean             # remove todos os stacks + artefatos locais
+
+# Kafka local — Docker, sem conta AWS
+make kafka-up          # sobe o broker Kafka e cria o tópico (4 partições)
+make kafka-rotear      # U3-KAFKA — roteamento por chave de partição
+make kafka-grupos      # U3-KAFKA — consumer groups e rebalanceamento
+make kafka-reentrega   # U3-KAFKA — at-least-once com reentrega
+make kafka-down        # derruba o broker e apaga os dados
 
 # LocalStack — roda qualquer lab sem conta AWS (ver seção LocalStack)
 make up                # sobe o LocalStack (Community, imagem :3)
@@ -199,6 +212,7 @@ As Partes 1–3 rodam em AWS real **ou** LocalStack; as Partes 4–5 (cold start
 | U3-LAB01 | Python 3.12 · AWS SAM · Lambda · Kinesis Data Streams (shards, PartitionKey) · API Gateway · pytest |
 | U3-LAB02 | Python 3.12 · AWS SAM · Lambda · Kinesis (Event Source Mapping) · ParallelizationFactor · BisectBatchOnFunctionError · pytest |
 | U3-LAB03 | Python 3.12 · AWS SAM · Lambda · SQS · DynamoDB (cache TTL) · Anthropic Claude Haiku · pytest |
+| U3-KAFKA | Python 3 · Apache Kafka 4.2 (KRaft) · Docker Compose · confluent-kafka · consumer groups · pytest |
 
 ## Ver também
 
